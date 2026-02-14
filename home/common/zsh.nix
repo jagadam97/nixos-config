@@ -44,7 +44,7 @@
       mkdir = "mkdir -p";
     };
 
-    initExtra = ''
+    initContent = ''
       # Zoxide init
       eval "$(zoxide init zsh)"
 

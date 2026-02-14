@@ -2,7 +2,10 @@
 { config, pkgs, ... }:
 
 {
-  sops.secrets.fah_passkey = { };
+  sops.secrets.fah_passkey = {
+    format = "dotenv";
+    key = "FAH_PASSKEY";
+  };
 
   services.foldingathome = {
     enable = true;
