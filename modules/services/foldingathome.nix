@@ -3,8 +3,8 @@
 
 {
   sops.secrets.fah_passkey = {
-    format = "dotenv";
-    key = "FAH_PASSKEY";
+    owner = "root";
+    group = "root";
   };
 
   services.foldingathome = {
