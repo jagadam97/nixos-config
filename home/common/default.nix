@@ -5,7 +5,6 @@
   imports = [
     ./zsh.nix
     ./git.nix
-    ./nvim.nix
     ./packages.nix
   ];
 
