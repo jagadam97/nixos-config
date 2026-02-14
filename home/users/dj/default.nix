@@ -4,7 +4,6 @@
 {
   imports = [
     ../../common
-    ../../desktop
   ];
 
   home.username = "dj";
