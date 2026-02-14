@@ -1,0 +1,36 @@
+# SOPS configuration for secret encryption
+# https://github.com/Mic92/sops-nix
+
+keys:
+  # Nauvoo (this machine)
+  - &nauvoo age1wjqs46cr6jh6zv935x45j5atlam25up5vugkjdmpsy0nz0gz9gvqgnqc5c
+
+  # Add more hosts here as you set them up:
+  # - &laptop age1xxxx...
+  # - &server age1yyyy...
+
+  # Your admin key (copy from ~/.config/sops/age/keys.txt)
+  # This lets you decrypt all secrets on any machine
+  - &admin age1wjqs46cr6jh6zv935x45j5atlam25up5vugkjdmpsy0nz0gz9gvqgnqc5c
+
+creation_rules:
+  # Host-specific secrets (each host can only decrypt its own)
+  - path_regex: hosts/nauvoo/secrets\.yaml$
+    key_groups:
+      - age:
+          - *nauvoo
+          - *admin
+
+  # User secrets for dj
+  - path_regex: home/users/dj/secrets\.yaml$
+    key_groups:
+      - age:
+          - *nauvoo
+          - *admin
+
+  # Shared secrets (all hosts can decrypt)
+  - path_regex: secrets/common\.yaml$
+    key_groups:
+      - age:
+          - *nauvoo
+          - *admin
