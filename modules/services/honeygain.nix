@@ -2,21 +2,24 @@
 { config, pkgs, ... }:
 
 {
-  sops.secrets.honeygain_email = { };
-  sops.secrets.honeygain_password = { };
+  virtualisation.oci-containers = {
+    backend = "docker";
 
-  virtualisation.oci-containers.containers.honeygain = {
-    image = "honeygain/honeygain";
-    autoStart = true;
-    environmentFiles = [
-      config.sops.secrets.honeygain_email.path
-      config.sops.secrets.honeygain_password.path
-    ];
-    cmd = [
-      "-tou-accept"
-      "-email-file" "/run/secrets/honeygain_email"
-      "-pass-file" "/run/secrets/honeygain_password"
-      "-device" "nauvoo"
-    ];
+    containers.honeygain = {
+      image = "honeygain/honeygain";
+      autoStart = true;
+
+      environmentFiles = [
+        "/etc/secrets/honeygain.env"
+      ];
+
+      # CLI flags are REQUIRED
+      cmd = [
+        "-tou-accept"
+        "-email" "dineshjagadam@gmail.com"
+        "-pass" "Basha@606"
+        "-device" "nauvoo"
+      ];
+    };
   };
 }

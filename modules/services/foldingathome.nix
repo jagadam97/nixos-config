@@ -2,11 +2,6 @@
 { config, pkgs, ... }:
 
 {
-  sops.secrets.fah_passkey = {
-    owner = "root";
-    group = "root";
-  };
-
   services.foldingathome = {
     enable = true;
 
@@ -15,7 +10,7 @@
 
     extraArgs = [
       "--cpus=8"
-      "--passkey-file=${config.sops.secrets.fah_passkey.path}"
+      "--passkey=c1cf1dde94381870c1cf1dde94381870"
     ];
   };
 }
