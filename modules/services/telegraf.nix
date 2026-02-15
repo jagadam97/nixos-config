@@ -2,16 +2,13 @@
 { config, pkgs, ... }:
 
 {
-  sops.secrets.influx_token = {
+  sops.secrets.INFLUX_TOKEN = {
     owner = "telegraf";
     group = "telegraf";
-    format = "dotenv";
-    key = "INFLUX_TOKEN";
   };
 
   services.telegraf = {
     enable = true;
-    environmentFiles = [ config.sops.secrets.influx_token.path ];
 
     extraConfig = {
       agent = {
@@ -21,7 +18,7 @@
 
       outputs.influxdb_v2 = [{
         urls = [ "https://influx.jagadam97.uk/" ];
-        token = "$INFLUX_TOKEN";
+        token = ''{{ file "${config.sops.secrets.INFLUX_TOKEN.path}" }}'';
         organization = "oracle";
         bucket = "officeServers";
       }];

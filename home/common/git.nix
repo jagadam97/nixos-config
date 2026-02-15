@@ -4,7 +4,7 @@
 {
   programs.git = {
     enable = true;
-    settings.user.name = "dj";
+    settings.user.name = "jagadam97";
     settings.user.email = "dineshjagadam@gmail.com";
 
     settings = {

@@ -2,6 +2,10 @@
 { config, pkgs, lib, ... }:
 
 {
+  # SOPS secrets for WireGuard
+  sops.secrets.wg_private_key = {};
+  sops.secrets.wg_preshared_key = {};
+
   # RP filter settings for WireGuard
   networking.firewall.checkReversePath = lib.mkDefault "loose";
 
@@ -9,12 +13,12 @@
     address = [ "10.10.10.4/24" ];
     listenPort = 51820;
     mtu = 1400;
-    privateKeyFile = "/etc/wireguard/privatekey";
+    privateKeyFile = config.sops.secrets.wg_private_key.path;
     table = "off";
 
     peers = [{
       publicKey = "py9338My4lDz2GJPZDEtEVoAToLmTAGPE4WdJP349XY=";
-      presharedKeyFile = "/etc/wireguard/presharedkey";
+      presharedKeyFile = config.sops.secrets.wg_preshared_key.path;
       endpoint = "beast.jagadam97.uk:51820";
       allowedIPs = [ "0.0.0.0/0" ];
       persistentKeepalive = 25;

@@ -33,6 +33,7 @@
             ./modules/services/docker.nix
             ./modules/services/telegraf.nix
             ./modules/services/wireguard.nix
+            ./modules/services/cachix.nix
             ./modules/services/nomad.nix
             ./modules/services/foldingathome.nix
             ./modules/services/honeygain.nix
