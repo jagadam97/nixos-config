@@ -1,14 +1,25 @@
 # FlareSolverr for bypassing Cloudflare
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 {
-  virtualisation.oci-containers.containers.flaresolverr = {
-    image = "ghcr.io/flaresolverr/flaresolverr:latest";
-    autoStart = true;
-    environment = {
-      "LOG_LEVEL" = "info";
-      "TZ" = "Asia/Kolkata";
+  services.flaresolverr = {
+    enable = true;
+    port = 8191;
+    openFirewall = true;
+  };
+  
+  systemd.services.flaresolverr = {
+    serviceConfig = {
+      Restart = lib.mkForce "on-failure";
+      RestartSec = lib.mkForce 5;
+      Environment = [
+        "LOG_LEVEL=info"
+        "MAX_BROWSER_INSTANCES=4"
+        "TZ=Asia/kolkata"
+      ];
+      MemoryMax = "4G";
+      MemoryHigh = "3.5G";
+      CPUQuota = "400%";
     };
-    ports = [ "8191:8191" ];
   };
 }
