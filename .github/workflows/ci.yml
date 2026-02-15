@@ -28,8 +28,8 @@ jobs:
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
           pushFilter: '(^cache\.nixos\.org-|^nix-community\.cachix\.org-)'
 
-      - name: Build and cache NixOS config
-        run: nix build .#nixosConfigurations.nauvoo.config.system.build.toplevel --impure --keep-going || true
+      - name: Devour and cache all packages
+        run: nix build github:srid/devour-flake -L --no-link --print-out-paths --override-input flake .
 
       # Add more hosts here as you create them:
       # - name: Check laptop configuration
