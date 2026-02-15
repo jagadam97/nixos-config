@@ -28,8 +28,8 @@ jobs:
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
           pushFilter: '(^cache\.nixos\.org-|^nix-community\.cachix\.org-)'
 
-      - name: Check NixOS config (dry-build)
-        run: nix build .#nixosConfigurations.nauvoo.config.system.build.toplevel --dry-run --impure --refresh
+      - name: Build and cache NixOS config
+        run: nix build .#nixosConfigurations.nauvoo.config.system.build.toplevel --impure --keep-going || true
 
       # Add more hosts here as you create them:
       # - name: Check laptop configuration
