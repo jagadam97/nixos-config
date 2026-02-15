@@ -43,6 +43,7 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          local_nix_build_user_count: 0
 
       - name: Setup Cachix
         uses: cachix/cachix-action@v14
