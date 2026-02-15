@@ -42,5 +42,12 @@
   # SOPS configuration for this host
   sops.defaultSopsFile = ./secrets.yaml;
   sops.defaultSopsFormat = "yaml";
-  sops.age.keyFile = "/home/dj/.config/sops/age/keys.txt";
+  sops.age.keyFile = "/var/lib/sops-nix/keys.txt";
+
+  sops.secrets.juspay_api_key = {
+    # sops-nix needs to know this secret exists in your .yaml file
+    # Default owner is root, change if needed
+    owner = "dj"; 
+  };
+
 }

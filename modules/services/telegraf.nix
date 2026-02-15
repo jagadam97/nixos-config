@@ -6,10 +6,10 @@
     owner = "telegraf";
     group = "telegraf";
   };
+  systemd.services.telegraf.serviceConfig.EnvironmentFile = config.sops.secrets.INFLUX_TOKEN.path;
 
   services.telegraf = {
     enable = true;
-
     extraConfig = {
       agent = {
         interval = "10s";
@@ -18,7 +18,7 @@
 
       outputs.influxdb_v2 = [{
         urls = [ "https://influx.jagadam97.uk/" ];
-        token = ''{{ file "${config.sops.secrets.INFLUX_TOKEN.path}" }}'';
+        token = "$INFLUX_TOKEN";
         organization = "oracle";
         bucket = "officeServers";
       }];

@@ -1,5 +1,5 @@
 # Zsh shell configuration
-{ config, pkgs, ... }:
+{ config, pkgs, osConfig, ... }:
 
 {
   programs.zsh = {
@@ -10,8 +10,25 @@
 
     oh-my-zsh = {
       enable = true;
-      plugins = [ "git" "docker" "sudo" ];
-      theme = "robbyrussell";
+      plugins = [
+        "git"
+        "eza"
+        "fzf"
+        "direnv"
+        "colorize"
+        "docker"
+        "cabal"
+        "golang"
+        "gradle"
+        "man"
+        "node"
+        "npm"
+        "nvm"
+        "vscode"
+        "zsh-interactive-cd"
+        "zsh-navigation-tools"
+      ];
+      theme = "xiong-chiamiov-plus";
     };
 
     shellAliases = {
@@ -20,8 +37,8 @@
       ll = "eza -la";
       la = "eza -a";
       lt = "eza --tree";
-      cat = "bat";
       cd = "z";
+      reload = "source ~/.zshrc";
 
       # Nix shortcuts
       nrs = "sudo nixos-rebuild switch --flake ~/repos/nixos-config#nauvoo";
@@ -51,8 +68,59 @@
       # FZF
       eval "$(fzf --zsh)"
 
-      # Fastfetch on startup
-      fastfetch
+      # pay-respects
+      command -v pay-respects >/dev/null && eval "$(pay-respects init zsh)"
+
+      # Fastfetch on startup (only for interactive terminals)
+      if [[ -t 1 ]]; then
+        command -v fastfetch >/dev/null && fastfetch
+      fi
+
+      if [[ -r "${osConfig.sops.secrets.juspay_api_key.path}" ]]; then
+        export JUSPAY_API_KEY=$(cat "${osConfig.sops.secrets.juspay_api_key.path}")
+      fi
+
+      # jclaude function - Juspay AI grid wrapper
+      jclaude() {
+        local MODEL
+
+        if [[ -z "$JUSPAY_API_KEY" ]]; then
+          echo "Error: JUSPAY_API_KEY not set" >&2
+          return 1
+        fi
+
+        MODEL=$(curl -s \
+          'https://grid.ai.juspay.net/models?return_wildcard_routes=false&include_model_access_groups=false&only_model_access_groups=false&include_metadata=false' \
+          -H 'accept: application/json' \
+          -H "Authorization: Bearer $JUSPAY_API_KEY" |
+          jq -r '.data[].id' | fzf)
+
+        [[ -z "$MODEL" ]] && return 1
+
+        env \
+          GEMINI_API_KEY="" \
+          GOOGLE_CLOUD_PROJECT="" \
+          GOOGLE_APPLICATION_CREDENTIALS="" \
+          CLAUDE_CODE_USE_VERTEX="" \
+          CLOUD_ML_REGION="" \
+          GOOGLE_VERTEX_PROJECT="" \
+          ANTHROPIC_VERTEX_PROJECT_ID="" \
+          ANTHROPIC_BASE_URL="https://grid.ai.juspay.net/" \
+          ANTHROPIC_AUTH_TOKEN="$JUSPAY_API_KEY" \
+          ANTHROPIC_MODEL="$MODEL" \
+          ANTHROPIC_SMALL_FAST_MODEL="$MODEL" \
+          CLAUDE_CODE_SUBAGENT_MODEL="$MODEL" \
+          DISABLE_INTERLEAVED_THINKING=true \
+          API_TIMEOUT_MS=600000 \
+          BASH_MAX_TIMEOUT_MS=300000 \
+          CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1 \
+          claude "$@"
+      }
+
+      # gswt - git worktree switcher with fzf
+      gswt() {
+        cd "$(_fzf_git_worktrees --no-multi)"
+      }
     '';
   };
 
@@ -77,4 +145,16 @@
     enable = true;
     config.theme = "TwoDark";
   };
+
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true;
+    nix-direnv.enable = true;
+  };
+
+  home.packages = with pkgs; [
+    pay-respects
+    jq
+    curl
+  ];
 }
