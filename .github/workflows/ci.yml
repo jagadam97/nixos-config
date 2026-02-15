@@ -26,6 +26,7 @@ jobs:
         with:
           name: jagadam97
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          pushFilter: '(^cache\.nixos\.org-|^nix-community\.cachix\.org-)'
 
       - name: Check NixOS config (eval only)
         run: nix eval .#nixosConfigurations.nauvoo.config.system.build.toplevel --impure --refresh
