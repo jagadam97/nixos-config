@@ -25,7 +25,7 @@
       nixosConfigurations = {
         # Nauvoo - your main desktop/workstation
         nauvoo = nixpkgs.lib.nixosSystem {
-          inherit linuxSystem;
+          system = linuxSystem;
           specialArgs = { inherit inputs; };
           modules = [
             sops-nix.nixosModules.sops
