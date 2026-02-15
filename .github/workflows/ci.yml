@@ -32,10 +32,18 @@ jobs:
         run: nix build .#nixosConfigurations.nauvoo.config.system.build.toplevel --keep-going
 
   build-darwin:
-    runs-on: macos-latest
+    runs-on: macos-14
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v26
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          install_options: --no-daemon
 
       - name: Setup Cachix
         uses: cachix/cachix-action@v14
