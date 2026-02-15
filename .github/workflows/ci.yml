@@ -37,13 +37,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Clean up existing Nix users
+        run: |
+          for i in 1 2 3 4 5 6; do
+            sudo dscl . -delete /Users/_nixbld$i 2>/dev/null || true
+          done
+          sudo dscl . -delete /Groups/nixbld 2>/dev/null || true
+
       - name: Install Nix
         uses: cachix/install-nix-action@v26
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-          local_nix_build_user_count: 0
 
       - name: Setup Cachix
         uses: cachix/cachix-action@v14
