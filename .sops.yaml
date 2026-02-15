@@ -2,12 +2,13 @@
 # https://github.com/Mic92/sops-nix
 
 keys:
-  # Nauvoo (this machine)
+  # Nauvoo (Linux workstation)
   - &nauvoo age1wjqs46cr6jh6zv935x45j5atlam25up5vugkjdmpsy0nz0gz9gvqgnqc5c
 
-  # Add more hosts here as you set them up:
-  # - &laptop age1xxxx...
-  # - &server age1yyyy...
+  # MacBook (Apple Silicon)
+  # Run: nix-shell -p age --run "age-keygen -o ~/.config/sops/age/keys.txt"
+  # Then add the public key from ~/.config/sops/age/keys.txt
+  - &macbook REPLACE_WITH_MACBOOK_AGE_PUBLIC_KEY
 
   # Your admin key (copy from ~/.config/sops/age/keys.txt)
   # This lets you decrypt all secrets on any machine
@@ -21,11 +22,17 @@ creation_rules:
           - *nauvoo
           - *admin
 
-  # User secrets for dj
-  - path_regex: home/users/dj/secrets\.yaml$
+  - path_regex: hosts/macbook/secrets\.yaml$
     key_groups:
       - age:
-          - *nauvoo
+          - *macbook
+          - *admin
+
+  # User secrets for dinesh.reddy
+  - path_regex: home/users/dinesh\.reddy/secrets\.yaml$
+    key_groups:
+      - age:
+          - *macbook
           - *admin
 
   # Shared secrets (all hosts can decrypt)
@@ -33,4 +40,5 @@ creation_rules:
     key_groups:
       - age:
           - *nauvoo
+          - *macbook
           - *admin

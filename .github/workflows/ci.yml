@@ -1,4 +1,4 @@
-name: Build NixOS Configurations
+name: Build Configurations
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ master, main ]
 
 jobs:
-  build:
+  build-nixos:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -26,11 +26,30 @@ jobs:
         with:
           name: jagadam97
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-          pushFilter: '(^cache\.nixos\.org-|^nix-community\.cachix\.org-)'
+          pushFilter: '(^cache\.nixos\.org-|^nix-community\.cachix\.org-|^jagadam97\.cachix\.org-)'
 
       - name: Build and cache NixOS config
-        run: nix build .#nixosConfigurations.nauvoo.config.system.build.toplevel --impure --keep-going 2>&1 || true
+        run: nix build .#nixosConfigurations.nauvoo.config.system.build.toplevel --keep-going
 
-      # Add more hosts here as you create them:
-      # - name: Check laptop configuration
-      #   run: nix eval .#nixosConfigurations.laptop.config.system.build.toplevel --impure
+  build-darwin:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v26
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v14
+        with:
+          name: jagadam97
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          pushFilter: '(^cache\.nixos\.org-|^nix-community\.cachix\.org-|^jagadam97\.cachix\.org-)'
+
+      - name: Build and cache Darwin config
+        run: nix build .#darwinConfigurations.macbook.config.system.build.toplevel --keep-going
