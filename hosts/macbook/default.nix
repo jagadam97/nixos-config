@@ -16,6 +16,9 @@
   # Enable nix-command and flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
+  # Trust the current user for daemon operations
+  nix.settings.trusted-users = [ "root" "@admin" "dinesh.reddy" ];
+
   # Hostname
   networking.hostName = "macbook";
   networking.computerName = "Dinesh's MacBook";

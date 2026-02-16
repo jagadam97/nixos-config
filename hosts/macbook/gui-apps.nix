@@ -26,7 +26,6 @@
       "font-fira-code"
       "font-powerline-symbols"
       "ghostty"
-      "github"
       "google-chrome"
       "iterm2"
       "libreoffice"

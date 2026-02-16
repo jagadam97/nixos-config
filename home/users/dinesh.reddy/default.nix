@@ -84,8 +84,8 @@
   programs.git = {
     enable = true;
     settings = {
-      user.name = "Dinesh Reddy";
-      user.email = "dinesh.reddy@example.com";
+      user.name = "Dinesh Jagadam";
+      user.email = "dinesh.reddy@juspay.in";
       init.defaultBranch = "main";
       core.editor = "vim";
       pull.rebase = true;
