@@ -31,8 +31,6 @@
 
     # From home/common/packages.nix
     go
-    claude-code
-    vscode
     zed-editor
     aria2
     chafa

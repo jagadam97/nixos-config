@@ -44,6 +44,19 @@
   environment.systemPath = [ "/opt/homebrew/bin" ];
   environment.pathsToLink = [ "/Applications" ];
 
+  # GUI apps at system level for Spotlight visibility in /Applications/Nix Apps/
+  environment.systemPackages = with pkgs; [
+    alacritty
+    iterm2
+    vscode
+    slack
+    postman
+    bitwarden-desktop
+    antigravity
+    claude-code
+    notion-app
+  ];
+
   # System defaults
   system.defaults = {
     dock.autohide = true;

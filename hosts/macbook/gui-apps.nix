@@ -34,7 +34,6 @@
       "notion-calendar"
       "postman"
       "rectangle"
-      "slack"
       "visual-studio-code"
       "vivaldi"
     ];
