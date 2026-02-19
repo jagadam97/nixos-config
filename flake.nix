@@ -42,7 +42,7 @@
             ./modules/services/flaresolver.nix
             ./modules/services/disable-suspend.nix
             ./modules/services/nix-ld.nix
-            # ./modules/services/nginx.nix  # Uncomment to enable TCP/UDP stream proxy
+            ./modules/services/nginx.nix  # Uncomment to enable TCP/UDP stream proxy
 
             # Home Manager integration
             home-manager.nixosModules.home-manager

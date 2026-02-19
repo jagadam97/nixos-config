@@ -7,7 +7,7 @@
     # The 'stream' block is used for TCP/UDP proxying
     streamConfig = ''
       upstream backend_9092 {
-          server 127.0.0.1:9092;
+          server 10.10.71.83:22;
       }
 
       upstream backend_9093 {
