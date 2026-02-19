@@ -52,7 +52,6 @@
     slack
     postman
     bitwarden-desktop
-    antigravity
     claude-code
     notion-app
   ];

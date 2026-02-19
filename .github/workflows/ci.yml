@@ -7,8 +7,25 @@ on:
     branches: [ master, main ]
 
 jobs:
+  flake-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v26
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Flake check
+        run: nix flake check
+
   build-nixos:
     runs-on: ubuntu-latest
+    needs: flake-check
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,27 +47,3 @@ jobs:
 
       - name: Build and cache NixOS config
         run: nix build .#nixosConfigurations.nauvoo.config.system.build.toplevel --keep-going
-
-  build-darwin:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@v26
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-          install_options: --no-daemon
-
-      - name: Setup Cachix
-        uses: cachix/cachix-action@v14
-        with:
-          name: jagadam97
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-          pushFilter: '(^cache\.nixos\.org-|^nix-community\.cachix\.org-|^jagadam97\.cachix\.org-)'
-
-      - name: Build and cache Darwin config
-        run: nix build .#darwinConfigurations.macbook.config.system.build.toplevel --keep-going
