@@ -11,7 +11,7 @@
       }
 
       upstream backend_9093 {
-          server 127.0.0.1:9093;
+          server 10.10.71.83:8080;
       }
 
       server {
