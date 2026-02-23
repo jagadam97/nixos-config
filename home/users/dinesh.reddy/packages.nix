@@ -81,6 +81,7 @@
     # AWS / Cloud
     awscli
     openstackclient
+    kubectl
 
     # Network Tools
     wget

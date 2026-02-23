@@ -45,10 +45,10 @@
   environment.pathsToLink = [ "/Applications" ];
 
   # GUI apps at system level for Spotlight visibility in /Applications/Nix Apps/
+  # Note: VS Code is installed via Homebrew cask in gui-apps.nix
   environment.systemPackages = with pkgs; [
     alacritty
     iterm2
-    vscode
     slack
     postman
     bitwarden-desktop
