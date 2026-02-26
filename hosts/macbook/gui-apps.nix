@@ -5,7 +5,7 @@
   # Enable Homebrew for casks that aren't in nixpkgs
   homebrew = {
     enable = true;
-    onActivation.autoUpdate = false;
+    onActivation.autoUpdate = true;
     onActivation.cleanup = "zap";
     onActivation.upgrade = true;
 
@@ -19,17 +19,12 @@
     ];
 
     casks = [
-      "antigravity"
       "bitwarden"
       "brave-browser"
-      "claude-code"
       "font-fira-code"
       "font-powerline-symbols"
       "ghostty"
-      "google-chrome"
       "iterm2"
-      "libreoffice"
-      "macfuse"
       "notion"
       "notion-calendar"
       "postman"
