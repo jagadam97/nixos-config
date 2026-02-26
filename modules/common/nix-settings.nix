@@ -5,6 +5,8 @@
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
     trusted-users = [ "root" "dj" ];
+    # Enable building for aarch64-linux via QEMU binfmt
+    extra-platforms = [ "aarch64-linux" ];
   };
 
   # Garbage collection

@@ -14,6 +14,9 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelModules = [ "kvm-amd" "kvm-intel" ];
 
+  # Enable binfmt emulation for aarch64-linux builds
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
+
   # Networking
   networking.networkmanager.enable = true;
   networking.firewall.enable = false;
