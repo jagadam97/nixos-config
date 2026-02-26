@@ -26,6 +26,7 @@
       theme = "robbyrussell";
     };
     initContent = ''
+      export PATH="/etc/profiles/per-user/dinesh.reddy/bin:$PATH"
       # Starship prompt
       eval "$(starship init zsh)"
 
@@ -60,6 +61,37 @@
       if [[ -f "$HOME/repos/nixos-config/hosts/macbook/secrets.yaml" ]]; then
         load_juspay_api_key 2>/dev/null || true
       fi
+
+      jclaude() {
+        local MODEL
+
+        MODEL=$(curl -s \
+          'https://grid.ai.juspay.net/models?return_wildcard_routes=false&include_model_access_groups=false&only_model_access_groups=false&include_metadata=false' \
+          -H 'accept: application/json' \
+          -H "Authorization: Bearer $JUSPAY_API_KEY" |
+          jq -r '.data[].id' | fzf)
+
+        [[ -z "$MODEL" ]] && return 1
+
+        env \
+          GEMINI_API_KEY="" \
+          GOOGLE_CLOUD_PROJECT="" \
+          GOOGLE_APPLICATION_CREDENTIALS="" \
+          CLAUDE_CODE_USE_VERTEX="" \
+          CLOUD_ML_REGION="" \
+          GOOGLE_VERTEX_PROJECT="" \
+          ANTHROPIC_VERTEX_PROJECT_ID="" \
+          ANTHROPIC_BASE_URL="https://grid.ai.juspay.net/" \
+          ANTHROPIC_AUTH_TOKEN="$JUSPAY_API_KEY" \
+          ANTHROPIC_MODEL="$MODEL" \
+          ANTHROPIC_SMALL_FAST_MODEL="$MODEL" \
+          CLAUDE_CODE_SUBAGENT_MODEL="$MODEL" \
+          DISABLE_INTERLEAVED_THINKING=true \
+          API_TIMEOUT_MS=600000 \
+          BASH_MAX_TIMEOUT_MS=300000 \
+          CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1 \
+          claude "$@"
+      }
     '';
   };
 
@@ -87,29 +119,15 @@
       user.name = "Dinesh Jagadam";
       user.email = "dinesh.reddy@juspay.in";
       init.defaultBranch = "main";
-      core.editor = "vim";
+      core.editor = "nvim";
       pull.rebase = true;
-    };
-  };
-
-  # Vim configuration
-  programs.vim = {
-    enable = true;
-    defaultEditor = false;
-    settings = {
-      number = true;
-      relativenumber = true;
-      tabstop = 2;
-      shiftwidth = 2;
-      expandtab = true;
-      mouse = "a";
     };
   };
 
   # Neovim configuration
   programs.neovim = {
     enable = true;
-    defaultEditor = false;
+    defaultEditor = true;
     viAlias = true;
     vimAlias = true;
   };
