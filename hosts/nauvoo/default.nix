@@ -9,6 +9,14 @@
   # Hostname
   networking.hostName = "nauvoo";
 
+  # User configuration
+  users.users.dj = {
+    isNormalUser = true;
+    description = "dj";
+    extraGroups = [ "networkmanager" "wheel" "docker" "libvirtd" ];
+    linger = true;
+  };
+
   # Boot configuration
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;

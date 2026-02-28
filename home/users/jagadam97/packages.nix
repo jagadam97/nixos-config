@@ -3,6 +3,9 @@
 
 {
   home.packages = with pkgs; [
+    # Terminal
+    alacritty
+    
     # Secret management
     sops
     age
@@ -127,5 +130,8 @@
     # AI
     claude-code
     github-copilot-cli
+    
+    # Fonts
+    (nerdfonts.override { fonts = [ "JetBrainsMono" ]; })
   ];
 }

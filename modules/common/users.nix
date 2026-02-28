@@ -1,18 +1,6 @@
-# User configuration
+# User configuration - host-specific users should be defined in host configs
 { config, pkgs, ... }:
 
 {
-  users.users.dj = {
-    isNormalUser = true;
-    description = "dj";
-    extraGroups = [ "networkmanager" "wheel" "docker" "libvirtd" ];
-    linger = true;
-  };
-
-   users.users.jagadam97 = {
-    isNormalUser = true;
-    description = "jagadam97";
-    extraGroups = [ "networkmanager" "wheel" "docker" "libvirtd" ];
-    linger = true;
-  };
+  # Common user settings can go here if needed
 }

@@ -9,6 +9,14 @@
   # Hostname
   networking.hostName = "razorback";
 
+  # User configuration
+  users.users.jagadam97 = {
+    isNormalUser = true;
+    description = "jagadam97";
+    extraGroups = [ "networkmanager" "wheel" "docker" "libvirtd" ];
+    linger = true;
+  };
+
   # Boot configuration
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
