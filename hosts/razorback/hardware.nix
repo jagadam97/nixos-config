@@ -28,4 +28,19 @@
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
+
+  # Graphics drivers for Intel Arrow Lake-P
+  hardware.graphics = {
+    enable = true;
+    enable32Bit = true;  # Enable 32-bit support for games/compatibility
+    extraPackages = with pkgs; [
+      intel-media-driver  # VAAPI driver for newer Intel GPUs
+      intel-compute-runtime  # OpenCL support
+      libvdpau-va-gl
+      libva-vdpau-driver
+    ];
+  };
+
+  # Enable Intel graphics firmware
+  hardware.enableRedistributableFirmware = true;
 }
