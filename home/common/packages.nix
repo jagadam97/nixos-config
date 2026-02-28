@@ -8,6 +8,7 @@
     cmake
     gcc
     claude-code
+    github-copilot-cli
 
     # Editors
     vscode

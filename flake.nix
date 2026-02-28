@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    darwin.url = "github:lnl7/nix-darwin";
+darwin.url = "github:lnl7/nix-darwin";
     darwin.inputs.nixpkgs.follows = "nixpkgs";
 
     home-manager = {
@@ -54,13 +54,38 @@
             }
           ];
         };
+        
+        # Razorback - workstation system
+        razorback = nixpkgs.lib.nixosSystem {
+          system = linuxSystem;
+          specialArgs = { inherit inputs; };
+          modules = [
+            sops-nix.nixosModules.sops
+            ./hosts/razorback
+            ./modules/common
+            ./modules/desktop
+            ./modules/services/docker.nix
+            ./modules/services/cachix.nix
+            ./modules/services/disable-suspend.nix
+            ./modules/services/nix-ld.nix
+
+            # Home Manager integration
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "bak";
+              home-manager.users.jagadam97 = import ./home/users/jagadam97;
+            }
+          ];
+        };
 
         # Add more machines here:
         # laptop = nixpkgs.lib.nixosSystem { ... };
         # server = nixpkgs.lib.nixosSystem { ... };
       };
 
-      darwinConfigurations = {
+           darwinConfigurations = {
         # MacBook - Apple Silicon Mac
         macbook = darwin.lib.darwinSystem {
           system = "aarch64-darwin";

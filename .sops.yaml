@@ -14,12 +14,20 @@ keys:
   # This lets you decrypt all secrets on any machine
   - &admin age1wjqs46cr6jh6zv935x45j5atlam25up5vugkjdmpsy0nz0gz9gvqgnqc5c
 
+  - &razorback age1a50mjzu5wks736rzhwn8wcn00v83agxuvh6785nfuh2uv3mavunq6hu06r
+
 creation_rules:
   # Host-specific secrets (each host can only decrypt its own)
   - path_regex: hosts/nauvoo/secrets\.yaml$
     key_groups:
       - age:
           - *nauvoo
+          - *admin
+
+  - path_regex: hosts/razorback/secrets\.yaml$
+    key_groups:
+      - age:
+          - *razorback
           - *admin
 
   - path_regex: hosts/macbook/secrets\.yaml$
@@ -41,4 +49,5 @@ creation_rules:
       - age:
           - *nauvoo
           - *macbook
+          - *razorback
           - *admin

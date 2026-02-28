@@ -8,4 +8,11 @@
     extraGroups = [ "networkmanager" "wheel" "docker" "libvirtd" ];
     linger = true;
   };
+
+   users.users.jagadam97 = {
+    isNormalUser = true;
+    description = "jagadam97";
+    extraGroups = [ "networkmanager" "wheel" "docker" "libvirtd" ];
+    linger = true;
+  };
 }

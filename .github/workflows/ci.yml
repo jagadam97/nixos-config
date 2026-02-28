@@ -2,9 +2,10 @@ name: Build Configurations
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [master, main]
   pull_request:
-    branches: [ master, main ]
+    branches: [master, main]
+  workflow_dispatch:
 
 jobs:
   flake-check:
@@ -26,6 +27,12 @@ jobs:
   build-nixos:
     runs-on: ubuntu-latest
     needs: flake-check
+    strategy:
+      # This creates two parallel jobs: one for nauvoo, one for razorback
+      matrix:
+        host: [nauvoo, razorback]
+      fail-fast: false # Keep building one even if the other fails
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,8 +49,9 @@ jobs:
         uses: cachix/cachix-action@v14
         with:
           name: jagadam97
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
           pushFilter: '(^cache\.nixos\.org-|^nix-community\.cachix\.org-|^jagadam97\.cachix\.org-)'
 
       - name: Build and cache NixOS config
-        run: nix build .#nixosConfigurations.nauvoo.config.system.build.toplevel --keep-going
+        # The ${{ matrix.host }} syntax dynamically inserts the machine name
+        run: nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel --keep-going

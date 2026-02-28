@@ -13,6 +13,7 @@
     zed-editor
     firefox
     chafa
+    brave
   ];
 
   # X11/Wayland settings
