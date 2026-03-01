@@ -4,6 +4,7 @@
 {
   imports = [
     ../../common
+    ./packages.nix
   ];
 
   home.username = "jagadam97";

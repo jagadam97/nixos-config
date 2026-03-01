@@ -19,5 +19,6 @@
     aria2
     ffmpeg
     chafa
+    zellij
   ];
 }

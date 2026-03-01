@@ -125,13 +125,12 @@
 
     # Other
     protobuf
-    kcat
 
     # AI
     claude-code
     github-copilot-cli
     
     # Fonts
-    (nerdfonts.override { fonts = [ "JetBrainsMono" ]; })
+    nerd-fonts.jetbrains-mono
   ];
 }
