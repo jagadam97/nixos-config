@@ -122,7 +122,6 @@
 
     # Other
     protobuf
-    kcat
 
     # AI
     claude-code

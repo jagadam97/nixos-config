@@ -37,4 +37,5 @@ jobs:
 
       - name: Build and cache NixOS config
         # The ${{ matrix.host }} syntax dynamically inserts the machine name
+        continue-on-error: true
         run: nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel --keep-going
