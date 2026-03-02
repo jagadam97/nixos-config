@@ -12,7 +12,6 @@
 
     # Editors
     vscode
-    zed-editor
 
     # System utilities
     mosh

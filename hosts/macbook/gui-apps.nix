@@ -31,6 +31,7 @@
       "rectangle"
       "visual-studio-code"
       "vivaldi"
+      "zed"
     ];
   };
 }

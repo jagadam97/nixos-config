@@ -31,7 +31,6 @@
 
     # From home/common/packages.nix
     go
-    zed-editor
     aria2
     chafa
 
@@ -80,7 +79,6 @@
 
     # AWS / Cloud
     awscli
-    openstackclient
     kubectl
 
     # Network Tools
@@ -126,5 +124,9 @@
     # AI
     claude-code
     github-copilot-cli
+
+    # Nix LSP
+    nixd
+    nil
   ];
 }
