@@ -31,6 +31,10 @@
     pay-respects
     starship
     zoxide
+    
+    # Nix Development
+    nil  # Nix language server
+    nixd  # Nix language server (alternative)
 
     # From home/common/packages.nix
     go
