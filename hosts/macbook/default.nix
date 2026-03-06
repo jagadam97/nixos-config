@@ -49,7 +49,6 @@
   environment.systemPackages = with pkgs; [
     alacritty
     iterm2
-    slack
     postman
     bitwarden-desktop
     claude-code
