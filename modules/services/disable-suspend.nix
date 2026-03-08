@@ -3,13 +3,12 @@
 
 {
   # Disable systemd sleep/hibernate
-  systemd.sleep.extraConfig = ''
-    [Sleep]
-    AllowSuspend=no
-    AllowHibernation=no
-    AllowSuspendThenHibernate=no
-    AllowHybridSleep=no
-  '';
+  systemd.sleep.settings.Sleep = {
+    AllowSuspend = "no";
+    AllowHibernation = "no";
+    AllowSuspendThenHibernate = "no";
+    AllowHybridSleep = "no";
+  };
 
   # Disable logind suspend on lid close
   services.logind.settings.Login = {
