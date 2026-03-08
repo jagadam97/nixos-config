@@ -19,7 +19,7 @@
     peers = [{
       publicKey = "py9338My4lDz2GJPZDEtEVoAToLmTAGPE4WdJP349XY=";
       presharedKeyFile = config.sops.secrets.wg_preshared_key.path;
-      endpoint = "beast.jagadam97.uk:51820";
+      endpoint = "152.70.69.235:51820";
       allowedIPs = [ "0.0.0.0/0" ];
       persistentKeepalive = 25;
     }];
