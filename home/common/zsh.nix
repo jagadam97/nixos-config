@@ -62,6 +62,9 @@
     };
 
     initContent = ''
+      # Direnv hook
+      eval "$(direnv hook zsh)"
+
       # Zoxide init
       eval "$(zoxide init zsh)"
 

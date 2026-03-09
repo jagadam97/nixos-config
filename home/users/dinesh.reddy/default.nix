@@ -22,7 +22,7 @@
     syntaxHighlighting.enable = true;
     oh-my-zsh = {
       enable = true;
-      plugins = [ "git" "sudo" "docker" "kubectl" ];
+      plugins = [ "git" "sudo" "docker" "kubectl" "direnv" ];
       theme = "robbyrussell";
     };
     initContent = ''
