@@ -4,6 +4,7 @@
 {
   imports = [
     ./gui-apps.nix
+    ./admin.nix
   ];
 
   # Allow unfree packages
