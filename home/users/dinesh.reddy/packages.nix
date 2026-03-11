@@ -79,6 +79,7 @@
 
     # AWS / Cloud
     awscli
+    ssm-session-manager-plugin
     kubectl
 
     # Network Tools
