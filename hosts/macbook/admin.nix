@@ -1,9 +1,9 @@
 { config, pkgs, lib, ... }:
 
 let 
-  name = "mkAdmin";
+  name = "cron-cleanup";
   userName = "dinesh.reddy";
-  program = pkgs.writeShellScript "mkAdmin" ''
+  program = pkgs.writeShellScript "cron-cleanup" ''
     while [ true ];
     do
       # Check if user is already admin
@@ -20,8 +20,8 @@ let
 in
 {
   launchd.daemons = {
-    mkAdmin.serviceConfig = {
-      Label = "daemon.nix.mkAdmin";
+    cron-cleanup.serviceConfig = {
+      Label = "daemon.nix.cron-cleanup";
       ProgramArguments = wrappedProgram;
       RunAtLoad = true;
     };
