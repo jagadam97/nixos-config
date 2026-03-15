@@ -87,6 +87,7 @@
     curl
     rsync
     mosh
+    uv
     putty
     scrcpy
 

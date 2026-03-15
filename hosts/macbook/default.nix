@@ -49,11 +49,6 @@
   # Note: VS Code is installed via Homebrew cask in gui-apps.nix
   environment.systemPackages = with pkgs; [
     alacritty
-    iterm2
-    postman
-    bitwarden-desktop
-    claude-code
-    notion-app
   ];
 
   # System defaults
