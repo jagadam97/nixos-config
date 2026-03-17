@@ -109,6 +109,7 @@
             ./modules/services/nix-ld.nix
             ./modules/services/nixos-autoupdate.nix
             ./modules/services/nfs-mounts.nix
+            ./modules/services/nomad.nix
 
             # Home Manager integration
             home-manager.nixosModules.home-manager
