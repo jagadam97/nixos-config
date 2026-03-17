@@ -25,7 +25,7 @@
       ${pkgs.tmux}/bin/tmux new-session -d -s dashboard \; \
         send-keys "${pkgs.htop}/bin/htop" Enter \; \
         split-window -v \; \
-        send-keys "${pkgs.nvtop}/bin/nvtop" Enter \; \
+        send-keys "${pkgs.nvtopPackages.full}/bin/nvtop" Enter \; \
         split-window -h -t 0 \; \
         send-keys "journalctl -f" Enter \; \
         select-pane -t 0
