@@ -1,9 +1,10 @@
-# Kayda - Laptop homelab server (Dell with GTX 1050 Ti Mobile)
+# Kayda - Laptop homelab server (Intel i5-8300H + GTX 1050 Ti Mobile)
 { config, pkgs, lib, ... }:
 
 {
   imports = [
     ./hardware.nix
+    ./disko.nix
   ];
 
   # Hostname
@@ -26,8 +27,9 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # Networking - static IP via NetworkManager
+  # Interface: enp3s0 (confirmed via ip a on Ubuntu)
   networking.networkmanager.enable = true;
-  networking.interfaces.eth0.ipv4.addresses = [{
+  networking.interfaces.enp3s0.ipv4.addresses = [{
     address = "192.168.4.200";
     prefixLength = 24;
   }];

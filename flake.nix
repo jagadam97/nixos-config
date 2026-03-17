@@ -15,6 +15,11 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -24,6 +29,7 @@
       darwin,
       home-manager,
       sops-nix,
+      disko,
       ...
     }@inputs:
     let
@@ -94,6 +100,7 @@
           specialArgs = { inherit inputs; };
           modules = [
             sops-nix.nixosModules.sops
+            disko.nixosModules.disko
             ./hosts/kayda
             ./modules/common
             ./modules/nvidia
