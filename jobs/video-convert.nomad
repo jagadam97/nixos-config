@@ -99,8 +99,8 @@ if [ ! -f "$INPUT" ]; then
   exit 1
 fi
 
-# Create output directory as nobody to match NFS ownership
-sudo -u nobody mkdir -p "$(dirname "$OUTPUT")"
+# Create output directory
+mkdir -p "$(dirname "$OUTPUT")"
 
 # Check if already H.265
 CODEC=$(ffprobe -v error -select_streams v:0 \
@@ -133,7 +133,7 @@ fi
 
 # Try GPU (nvenc) first, fall back to CPU (libx265)
 echo "Trying GPU encode (hevc_nvenc)..."
-if sudo -u nobody ffmpeg -hide_banner \
+if ffmpeg -hide_banner \
     -hwaccel cuda -hwaccel_output_format cuda \
     -i "$INPUT" \
     $VF_ARG \
@@ -155,7 +155,7 @@ if sudo -u nobody ffmpeg -hide_banner \
 else
   echo ""
   echo "GPU encode failed, falling back to CPU (libx265)..."
-  sudo -u nobody ffmpeg -hide_banner \
+  ffmpeg -hide_banner \
     -i "$INPUT" \
     $VF_ARG \
     -c:v libx265 \

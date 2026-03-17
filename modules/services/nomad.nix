@@ -78,6 +78,8 @@
     # Give Nomad time to drain running jobs before systemd force-kills it
     TimeoutStopSec = "120s";
     KillMode = lib.mkForce "mixed";
+    # Allow Nomad tasks to access NFS mounts from the host mount namespace
+    PrivateMounts = lib.mkForce false;
   };
 
   environment.systemPackages = with pkgs; [
