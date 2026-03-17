@@ -33,16 +33,6 @@
   # Tailscale
   services.tailscale.enable = true;
 
-  # Printing
-  services.printing.enable = true;
-
-  # Audio (PipeWire)
-  services.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-  };
+  # Note: Audio (PipeWire) and printing are in modules/desktop/pipewire.nix
+  # They are intentionally excluded here to keep headless servers lean
 }

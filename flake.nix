@@ -17,7 +17,15 @@
     };
   };
 
-  outputs = { self, nixpkgs, darwin, home-manager, sops-nix, ... }@inputs:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      darwin,
+      home-manager,
+      sops-nix,
+      ...
+    }@inputs:
     let
       linuxSystem = "x86_64-linux";
     in
@@ -42,7 +50,7 @@
             ./modules/services/flaresolver.nix
             ./modules/services/disable-suspend.nix
             ./modules/services/nix-ld.nix
-            ./modules/services/nginx.nix  # Uncomment to enable TCP/UDP stream proxy
+            ./modules/services/nginx.nix # Uncomment to enable TCP/UDP stream proxy
 
             # Home Manager integration
             home-manager.nixosModules.home-manager
@@ -54,7 +62,7 @@
             }
           ];
         };
-        
+
         # Razorback - workstation system
         razorback = nixpkgs.lib.nixosSystem {
           system = linuxSystem;
@@ -80,12 +88,32 @@
           ];
         };
 
-        # Add more machines here:
-        # laptop = nixpkgs.lib.nixosSystem { ... };
-        # server = nixpkgs.lib.nixosSystem { ... };
+        # Kayda - Laptop homelab server (GTX 1050 Ti Mobile)
+        kayda = nixpkgs.lib.nixosSystem {
+          system = linuxSystem;
+          specialArgs = { inherit inputs; };
+          modules = [
+            sops-nix.nixosModules.sops
+            ./hosts/kayda
+            ./modules/common
+            ./modules/nvidia
+            ./modules/dashboard
+            ./modules/services/disable-suspend.nix
+            ./modules/services/nix-ld.nix
+
+            # Home Manager integration
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "bak";
+              home-manager.users.jagadam97 = import ./home/users/jagadam97;
+            }
+          ];
+        };
       };
 
-           darwinConfigurations = {
+      darwinConfigurations = {
         # MacBook - Apple Silicon Mac
         macbook = darwin.lib.darwinSystem {
           system = "aarch64-darwin";
