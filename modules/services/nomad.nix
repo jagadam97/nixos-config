@@ -23,7 +23,7 @@
       client = {
         enabled = true;
         servers = [ "localhost" ];
-        alloc_dir = "/var/lib/nomad/allocs";
+        alloc_dir = "/tmp/nomad-allocs";
 
         options = {
           "docker.privileged.enabled" = "true";
@@ -69,13 +69,12 @@
   };
 
   systemd.tmpfiles.rules = [
-    "d /var/lib/nomad              0755 nomad nomad -"
-    "d /var/lib/nomad/allocs       0755 nomad nomad -"
-    "d /var/lib/alloc_mounts       0755 nomad nomad -"
+    "d /tmp/nomad-allocs    0777 root root -"
+    "d /var/lib/alloc_mounts 0777 root root -"
   ];
 
   systemd.services.nomad.serviceConfig = {
-    ExecStartPre = "+${pkgs.coreutils}/bin/mkdir -p /var/lib/nomad /var/lib/nomad/allocs /var/lib/alloc_mounts";
+    ExecStartPre = "+${pkgs.coreutils}/bin/mkdir -p /tmp/nomad-allocs /var/lib/alloc_mounts";
     # Give Nomad time to drain running jobs before systemd force-kills it
     TimeoutStopSec = "120s";
     KillMode = lib.mkForce "mixed";
