@@ -103,9 +103,6 @@ fi
 mkdir -p "$(dirname "$OUTPUT")"
 chmod 777 "$(dirname "$OUTPUT")" 2>/dev/null || true
 
-# Use a temp file for encoding, then move to NFS (avoids mount namespace issues)
-TMPOUT=$(mktemp /tmp/nomad-encode-XXXXXX.mkv)
-
 # Check if already H.265
 CODEC=$(ffprobe -v error -select_streams v:0 \
   -show_entries stream=codec_name \
@@ -147,10 +144,7 @@ if ffmpeg -hide_banner \
     -c:a aac -b:a 192k \
     -c:s copy \
     -map 0 \
-    -y "$TMPOUT" 2>&1; then
-  echo ""
-  echo "Encode done, moving to output location..."
-  mv "$TMPOUT" "$OUTPUT"
+    -y "$OUTPUT" 2>&1; then
   NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
   echo "========================================"
   echo " Done (GPU)"
@@ -170,10 +164,7 @@ else
     -c:a aac -b:a 192k \
     -c:s copy \
     -map 0 \
-    -y "$TMPOUT" 2>&1
-  echo ""
-  echo "Encode done, moving to output location..."
-  mv "$TMPOUT" "$OUTPUT"
+    -y "$OUTPUT" 2>&1
   NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
   echo "========================================"
   echo " Done (CPU fallback)"
@@ -182,7 +173,6 @@ else
   echo " After      : $NEW_SIZE"
   echo "========================================"
 fi
-rm -f "$TMPOUT" 2>/dev/null || true
 EOF
         ]
       }

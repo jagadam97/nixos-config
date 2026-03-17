@@ -75,13 +75,20 @@
 
   systemd.services.nomad.serviceConfig = {
     ExecStartPre = "+${pkgs.coreutils}/bin/mkdir -p /tmp/nomad-allocs /var/lib/alloc_mounts";
-    # Give Nomad time to drain running jobs before systemd force-kills it
     TimeoutStopSec = "120s";
     KillMode = lib.mkForce "mixed";
-    # Allow Nomad tasks to access NFS mounts from the host mount namespace
+    # Strip ALL systemd sandboxing so Nomad inherits the host mount namespace
+    # and can see NFS mounts under /mnt
     PrivateMounts = lib.mkForce false;
-    # Bind /mnt into the service namespace explicitly
-    BindPaths = [ "/mnt" ];
+    PrivateUsers = lib.mkForce false;
+    PrivateTmp = lib.mkForce false;
+    PrivateDevices = lib.mkForce false;
+    ProtectSystem = lib.mkForce false;
+    ProtectHome = lib.mkForce false;
+    NoNewPrivileges = lib.mkForce false;
+    RestrictNamespaces = lib.mkForce false;
+    BindPaths = lib.mkForce [ ];
+    BindReadOnlyPaths = lib.mkForce [ ];
   };
 
   environment.systemPackages = with pkgs; [
