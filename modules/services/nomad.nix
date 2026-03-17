@@ -31,7 +31,12 @@
         };
       };
 
-      plugin.raw_exec.config.enabled = true;
+      plugin.raw_exec = {
+        config = {
+          enabled = true;
+          no_pivot = true;
+        };
+      };
 
       plugin.docker = {
         config = {

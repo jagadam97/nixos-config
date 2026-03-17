@@ -90,6 +90,7 @@ echo " Input      : $INPUT"
 echo " Output     : $OUTPUT"
 echo " Resolution : $RESOLUTION"
 echo " CRF        : $CRF"
+echo " Running as : $(id)"
 echo "========================================"
 echo ""
 
