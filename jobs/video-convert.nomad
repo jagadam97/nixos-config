@@ -13,6 +13,8 @@
 #   4k     -> scale to 3840x2160, CRF 20 (best quality)
 #   source -> no scaling, just re-encode at CRF 23
 #
+# Audio: all tracks converted to AAC 192k
+#
 # Watch logs live:
 #   nomad alloc logs -f <alloc-id>
 # Or in Nomad UI: http://192.168.4.200:4646
@@ -138,7 +140,7 @@ if ffmpeg -hide_banner \
     -c:v hevc_nvenc \
     -preset p4 \
     -cq "$CRF" \
-    -c:a copy \
+    -c:a aac -b:a 192k \
     -c:s copy \
     -map 0 \
     -y "$OUTPUT" 2>&1; then
@@ -159,7 +161,7 @@ else
     -c:v libx265 \
     -crf "$CRF" \
     -preset medium \
-    -c:a copy \
+    -c:a aac -b:a 192k \
     -c:s copy \
     -map 0 \
     -y "$OUTPUT" 2>&1
