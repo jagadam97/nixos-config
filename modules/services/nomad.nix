@@ -9,6 +9,7 @@
     settings = {
       datacenter = "dc1";
       data_dir = "/var/lib/nomad";
+      alloc_dir = "/var/lib/nomad/allocs";
 
       server = {
         enabled = true;
@@ -63,12 +64,13 @@
   };
 
   systemd.tmpfiles.rules = [
-    "d /var/lib/nomad        0755 root root -"
-    "d /var/lib/alloc_mounts 0755 root root -"
+    "d /var/lib/nomad              0755 root root -"
+    "d /var/lib/nomad/allocs       0755 root root -"
+    "d /var/lib/alloc_mounts       0755 root root -"
   ];
 
   systemd.services.nomad.serviceConfig = {
-    ExecStartPre = "+${pkgs.coreutils}/bin/mkdir -p /var/lib/nomad /var/lib/alloc_mounts";
+    ExecStartPre = "+${pkgs.coreutils}/bin/mkdir -p /var/lib/nomad /var/lib/nomad/allocs /var/lib/alloc_mounts";
   };
 
   environment.systemPackages = with pkgs; [
