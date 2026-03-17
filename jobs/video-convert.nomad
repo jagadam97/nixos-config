@@ -49,7 +49,6 @@ job "video-convert" {
 
     task "ffmpeg" {
       driver = "raw_exec"
-      user   = "nobody"
 
       config {
         command = "/bin/sh"
@@ -100,8 +99,8 @@ if [ ! -f "$INPUT" ]; then
   exit 1
 fi
 
-# Create output directory if needed
-mkdir -p "$(dirname "$OUTPUT")"
+# Create output directory as nobody to match NFS ownership
+sudo -u nobody mkdir -p "$(dirname "$OUTPUT")"
 
 # Check if already H.265
 CODEC=$(ffprobe -v error -select_streams v:0 \
@@ -134,7 +133,7 @@ fi
 
 # Try GPU (nvenc) first, fall back to CPU (libx265)
 echo "Trying GPU encode (hevc_nvenc)..."
-if ffmpeg -hide_banner \
+if sudo -u nobody ffmpeg -hide_banner \
     -hwaccel cuda -hwaccel_output_format cuda \
     -i "$INPUT" \
     $VF_ARG \
@@ -145,7 +144,6 @@ if ffmpeg -hide_banner \
     -c:s copy \
     -map 0 \
     -y "$OUTPUT" 2>&1; then
-  chown nobody:nogroup "$OUTPUT" 2>/dev/null || true
   NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
   echo ""
   echo "========================================"
@@ -157,7 +155,7 @@ if ffmpeg -hide_banner \
 else
   echo ""
   echo "GPU encode failed, falling back to CPU (libx265)..."
-  ffmpeg -hide_banner \
+  sudo -u nobody ffmpeg -hide_banner \
     -i "$INPUT" \
     $VF_ARG \
     -c:v libx265 \
@@ -167,7 +165,6 @@ else
     -c:s copy \
     -map 0 \
     -y "$OUTPUT" 2>&1
-  chown nobody:nogroup "$OUTPUT" 2>/dev/null || true
   NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
   echo ""
   echo "========================================"
