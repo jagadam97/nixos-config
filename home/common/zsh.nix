@@ -1,5 +1,11 @@
 # Zsh shell configuration
-{ config, pkgs, osConfig, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  osConfig,
+  ...
+}:
 
 {
   programs.zsh = {
@@ -79,9 +85,11 @@
         command -v fastfetch >/dev/null && fastfetch
       fi
 
-      if [[ -r "${osConfig.sops.secrets.juspay_api_key.path}" ]]; then
-        export JUSPAY_API_KEY=$(cat "${osConfig.sops.secrets.juspay_api_key.path}")
-      fi
+      ${lib.optionalString (osConfig.sops.secrets ? juspay_api_key) ''
+        if [[ -r "${osConfig.sops.secrets.juspay_api_key.path}" ]]; then
+          export JUSPAY_API_KEY=$(cat "${osConfig.sops.secrets.juspay_api_key.path}")
+        fi
+      ''}
 
       # jclaude function - Juspay AI grid wrapper
       jclaude() {

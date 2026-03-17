@@ -7,7 +7,12 @@
 #   00:02.0 VGA compatible controller: Intel HD Graphics 630
 #   01:00.0 3D controller: NVIDIA GTX 1050 Ti Mobile
 # Then set intelBusId = "PCI:0:2:0" and nvidiaBusId = "PCI:1:0:0"
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   # Load NVIDIA proprietary drivers
@@ -28,13 +33,13 @@
     prime = {
       offload = {
         enable = true;
-        enableOffloadCmd = true;  # provides `nvidia-offload` command
+        enableOffloadCmd = true; # provides `nvidia-offload` command
       };
 
       # TODO: Replace with actual PCI bus IDs from `lspci | grep -E 'VGA|3D'`
       # Format: "PCI:bus:device:function"
-      intelBusId = "PCI:0:2:0";   # TODO: verify with lspci
-      nvidiaBusId = "PCI:1:0:0";  # TODO: verify with lspci
+      intelBusId = "PCI:0:2:0"; # TODO: verify with lspci
+      nvidiaBusId = "PCI:1:0:0"; # TODO: verify with lspci
     };
   };
 
@@ -43,19 +48,16 @@
     enable = true;
     enable32Bit = true;
     extraPackages = with pkgs; [
-      nvidia-vaapi-driver   # VAAPI via NVIDIA (for ffmpeg hwaccel)
-      vaapiVdpau            # VDPAU via VAAPI bridge
-      libvdpau-va-gl        # VDPAU via OpenGL
+      nvidia-vaapi-driver # VAAPI via NVIDIA (for ffmpeg hwaccel)
+      libva-vdpau-driver # VDPAU via VAAPI bridge (formerly vaapiVdpau)
+      libvdpau-va-gl # VDPAU via OpenGL
     ];
   };
 
   # CUDA and compute packages
   environment.systemPackages = with pkgs; [
-    # ffmpeg with NVIDIA hardware encoding/decoding (NVENC/NVDEC)
-    (ffmpeg.override {
-      withNvenc = true;
-      withCuda = true;
-    })
+    # ffmpeg-full includes NVENC/NVDEC and CUDA support out of the box
+    ffmpeg-full
 
     # GPU monitoring tools
     nvtopPackages.nvidia
