@@ -11,9 +11,9 @@ jobs:
   build-nixos:
     runs-on: ubuntu-latest
     strategy:
-      # This creates two parallel jobs: one for nauvoo, one for razorback
+      # Parallel jobs: one per machine
       matrix:
-        host: [nauvoo, razorback]
+        host: [nauvoo, razorback, kayda]
       fail-fast: false # Keep building one even if the other fails
 
     steps:
