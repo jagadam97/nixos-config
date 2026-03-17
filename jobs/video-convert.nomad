@@ -49,6 +49,7 @@ job "video-convert" {
 
     task "ffmpeg" {
       driver = "raw_exec"
+      user   = "nobody"
 
       config {
         command = "/bin/sh"
@@ -144,6 +145,7 @@ if ffmpeg -hide_banner \
     -c:s copy \
     -map 0 \
     -y "$OUTPUT" 2>&1; then
+  chown nobody:nogroup "$OUTPUT" 2>/dev/null || true
   NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
   echo ""
   echo "========================================"
@@ -165,6 +167,7 @@ else
     -c:s copy \
     -map 0 \
     -y "$OUTPUT" 2>&1
+  chown nobody:nogroup "$OUTPUT" 2>/dev/null || true
   NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
   echo ""
   echo "========================================"
