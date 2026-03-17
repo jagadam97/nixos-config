@@ -71,6 +71,9 @@
 
   systemd.services.nomad.serviceConfig = {
     ExecStartPre = "+${pkgs.coreutils}/bin/mkdir -p /var/lib/nomad /var/lib/nomad/allocs /var/lib/alloc_mounts";
+    # Give Nomad time to drain running jobs before systemd force-kills it
+    TimeoutStopSec = "120s";
+    KillMode = "mixed";
   };
 
   environment.systemPackages = with pkgs; [

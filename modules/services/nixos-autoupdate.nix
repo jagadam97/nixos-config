@@ -58,6 +58,15 @@ let
     fi
 
     echo "[nixos-autoupdate] New commits detected: $LOCAL -> $REMOTE_SHA"
+
+    # Don't rebuild while Nomad has running jobs - it will kill active ffmpeg encodes
+    RUNNING_JOBS=$(${pkgs.nomad}/bin/nomad job status 2>/dev/null \
+      | grep -c "running" || true)
+    if [ "$RUNNING_JOBS" -gt 0 ]; then
+      echo "[nixos-autoupdate] Nomad has $RUNNING_JOBS running job(s), skipping rebuild to avoid interruption. Will retry next cycle."
+      exit 0
+    fi
+
     ${pkgs.git}/bin/git pull --ff-only origin main
 
     echo "[nixos-autoupdate] Running nixos-rebuild switch..."
