@@ -9,7 +9,6 @@
     settings = {
       datacenter = "dc1";
       data_dir = "/var/lib/nomad";
-      alloc_dir = "/var/lib/nomad/allocs";
 
       server = {
         enabled = true;
@@ -19,6 +18,7 @@
       client = {
         enabled = true;
         servers = [ "localhost" ];
+        alloc_dir = "/var/lib/nomad/allocs";
 
         options = {
           "docker.privileged.enabled" = "true";
