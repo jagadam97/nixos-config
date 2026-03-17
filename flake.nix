@@ -107,6 +107,7 @@
             ./modules/dashboard
             ./modules/services/disable-suspend.nix
             ./modules/services/nix-ld.nix
+            ./modules/services/nixos-autoupdate.nix
 
             # Home Manager integration
             home-manager.nixosModules.home-manager
