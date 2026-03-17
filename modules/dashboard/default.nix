@@ -1,4 +1,5 @@
-# TTY1 Dashboard - Auto-login with tmux split: htop (left) | journalctl (right)
+# TTY1 Dashboard - Auto-login with tmux layout:
+#   left-top: htop | left-bottom: nvtop | right: journalctl
 # Switch to other TTYs with Alt+F2 through Alt+F6 for normal login
 {
   config,
@@ -20,10 +21,12 @@
       # Kill any stale session
       ${pkgs.tmux}/bin/tmux kill-session -t dashboard 2>/dev/null || true
 
-      # Create split tmux session: left = htop, right = journalctl -f
+      # Layout: left-top = htop, left-bottom = nvtop, right = journalctl
       ${pkgs.tmux}/bin/tmux new-session -d -s dashboard \; \
         send-keys "${pkgs.htop}/bin/htop" Enter \; \
-        split-window -h \; \
+        split-window -v \; \
+        send-keys "${pkgs.nvtop}/bin/nvtop" Enter \; \
+        split-window -h -t 0 \; \
         send-keys "journalctl -f" Enter \; \
         select-pane -t 0
 
