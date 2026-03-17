@@ -4,7 +4,14 @@
 #   nomad job run \
 #     -var="input=/mnt/hd4000/media/movies/foo.mkv" \
 #     -var="output=/mnt/hd4000/media/movies/converted/foo.mkv" \
+#     -var="resolution=1080p" \
 #     jobs/video-convert.nomad
+#
+# resolution options: 720p | 1080p | 4k | source
+#   720p   -> scale to 1280x720,  CRF 26 (smallest file)
+#   1080p  -> scale to 1920x1080, CRF 23
+#   4k     -> scale to 3840x2160, CRF 20 (best quality)
+#   source -> no scaling, just re-encode at CRF 23
 #
 # Watch logs live:
 #   nomad alloc logs -f <alloc-id>
@@ -20,10 +27,10 @@ variable "output" {
   description = "Full path for the output file (should end in .mkv)"
 }
 
-variable "crf" {
+variable "resolution" {
   type        = string
-  description = "Quality: lower = better quality, larger file (18-28 recommended)"
-  default     = "23"
+  description = "Target resolution: 720p | 1080p | 4k | source"
+  default     = "1080p"
 }
 
 job "video-convert" {
@@ -48,14 +55,39 @@ set -euo pipefail
 
 INPUT="${var.input}"
 OUTPUT="${var.output}"
-CRF="${var.crf}"
+RESOLUTION="${var.resolution}"
+
+# Map resolution -> scale filter + CRF
+case "$RESOLUTION" in
+  720p)
+    SCALE="scale=1280:720:force_original_aspect_ratio=decrease:flags=lanczos"
+    CRF=26
+    ;;
+  1080p)
+    SCALE="scale=1920:1080:force_original_aspect_ratio=decrease:flags=lanczos"
+    CRF=23
+    ;;
+  4k)
+    SCALE="scale=3840:2160:force_original_aspect_ratio=decrease:flags=lanczos"
+    CRF=20
+    ;;
+  source)
+    SCALE=""
+    CRF=23
+    ;;
+  *)
+    echo "ERROR: Invalid resolution '$RESOLUTION'. Must be one of: 720p, 1080p, 4k, source"
+    exit 1
+    ;;
+esac
 
 echo "========================================"
 echo " Video Converter - H.265/HEVC (GPU)"
 echo "========================================"
-echo " Input  : $INPUT"
-echo " Output : $OUTPUT"
-echo " CRF    : $CRF"
+echo " Input      : $INPUT"
+echo " Output     : $OUTPUT"
+echo " Resolution : $RESOLUTION"
+echo " CRF        : $CRF"
 echo "========================================"
 echo ""
 
@@ -73,22 +105,36 @@ CODEC=$(ffprobe -v error -select_streams v:0 \
   -show_entries stream=codec_name \
   -of default=noprint_wrappers=1:nokey=1 "$INPUT" 2>/dev/null || echo "unknown")
 
-echo "Input codec : $CODEC"
+# Get input resolution
+INPUT_RES=$(ffprobe -v error -select_streams v:0 \
+  -show_entries stream=width,height \
+  -of csv=s=x:p=0 "$INPUT" 2>/dev/null || echo "unknown")
 
-if [ "$CODEC" = "hevc" ]; then
-  echo "Input is already H.265/HEVC, nothing to do."
+echo "Input codec      : $CODEC"
+echo "Input resolution : $INPUT_RES"
+
+if [ "$CODEC" = "hevc" ] && [ "$RESOLUTION" = "source" ]; then
+  echo "Input is already H.265/HEVC at source resolution, nothing to do."
   exit 0
 fi
 
 ORIG_SIZE=$(du -sh "$INPUT" | cut -f1)
-echo "Input size  : $ORIG_SIZE"
+echo "Input size       : $ORIG_SIZE"
 echo ""
+
+# Build scale filter arg (empty if source resolution)
+if [ -n "$SCALE" ]; then
+  VF_ARG="-vf $SCALE"
+else
+  VF_ARG=""
+fi
 
 # Try GPU (nvenc) first, fall back to CPU (libx265)
 echo "Trying GPU encode (hevc_nvenc)..."
 if ffmpeg -hide_banner \
     -hwaccel cuda -hwaccel_output_format cuda \
     -i "$INPUT" \
+    $VF_ARG \
     -c:v hevc_nvenc \
     -preset p4 \
     -cq "$CRF" \
@@ -100,14 +146,16 @@ if ffmpeg -hide_banner \
   echo ""
   echo "========================================"
   echo " Done (GPU)"
-  echo " Before : $ORIG_SIZE"
-  echo " After  : $NEW_SIZE"
+  echo " Resolution : $RESOLUTION"
+  echo " Before     : $ORIG_SIZE"
+  echo " After      : $NEW_SIZE"
   echo "========================================"
 else
   echo ""
   echo "GPU encode failed, falling back to CPU (libx265)..."
   ffmpeg -hide_banner \
     -i "$INPUT" \
+    $VF_ARG \
     -c:v libx265 \
     -crf "$CRF" \
     -preset medium \
@@ -119,8 +167,9 @@ else
   echo ""
   echo "========================================"
   echo " Done (CPU fallback)"
-  echo " Before : $ORIG_SIZE"
-  echo " After  : $NEW_SIZE"
+  echo " Resolution : $RESOLUTION"
+  echo " Before     : $ORIG_SIZE"
+  echo " After      : $NEW_SIZE"
   echo "========================================"
 fi
 EOF
