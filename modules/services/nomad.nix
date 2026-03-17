@@ -69,9 +69,9 @@
   };
 
   systemd.tmpfiles.rules = [
-    "d /var/lib/nomad              0755 root root -"
-    "d /var/lib/nomad/allocs       0755 root root -"
-    "d /var/lib/alloc_mounts       0755 root root -"
+    "d /var/lib/nomad              0755 nomad nomad -"
+    "d /var/lib/nomad/allocs       0755 nomad nomad -"
+    "d /var/lib/alloc_mounts       0755 nomad nomad -"
   ];
 
   systemd.services.nomad.serviceConfig = {
