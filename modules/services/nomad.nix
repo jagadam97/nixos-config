@@ -80,6 +80,8 @@
     KillMode = lib.mkForce "mixed";
     # Allow Nomad tasks to access NFS mounts from the host mount namespace
     PrivateMounts = lib.mkForce false;
+    # Bind /mnt into the service namespace explicitly
+    BindPaths = [ "/mnt" ];
   };
 
   environment.systemPackages = with pkgs; [
