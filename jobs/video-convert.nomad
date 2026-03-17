@@ -126,19 +126,25 @@ ORIG_SIZE=$(du -sh "$INPUT" | cut -f1)
 echo "Input size       : $ORIG_SIZE"
 echo ""
 
-# Build scale filter arg (empty if source resolution)
+# Build scale filter - use scale_cuda when scaling, plain hwaccel when not
+# scale_cuda keeps frames on GPU throughout; plain -vf would fail with cuda hwaccel
 if [ -n "$SCALE" ]; then
-  VF_ARG="-vf $SCALE"
+  # Replace scale= with scale_cuda= and strip flags= (not supported by scale_cuda)
+  CUDA_VF="-vf $(echo "$SCALE" | sed 's/scale=/scale_cuda=/' | sed 's/:flags=[^:,]*//')"
+  # hwaccel_output_format cuda required for scale_cuda
+  HWACCEL="-hwaccel cuda -hwaccel_output_format cuda"
 else
-  VF_ARG=""
+  CUDA_VF=""
+  # No scaling - decode on GPU directly
+  HWACCEL="-hwaccel cuda -hwaccel_output_format cuda"
 fi
 
 # Try GPU (nvenc) first, fall back to CPU (libx265)
 echo "Trying GPU encode (hevc_nvenc)..."
 if ffmpeg -hide_banner \
-    -hwaccel cuda -hwaccel_output_format cuda \
+    $HWACCEL \
     -i "$INPUT" \
-    $VF_ARG \
+    $CUDA_VF \
     -c:v hevc_nvenc \
     -preset p4 \
     -cq "$CRF" \
