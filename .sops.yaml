@@ -16,6 +16,11 @@ keys:
 
   - &razorback age1a50mjzu5wks736rzhwn8wcn00v83agxuvh6785nfuh2uv3mavunq6hu06r
 
+  # Kayda (Laptop homelab - GTX 1050 Ti)
+  # After install run: sudo ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
+  # Then replace the placeholder below with the output
+  - &kayda REPLACE_WITH_KAYDA_AGE_PUBLIC_KEY
+
 creation_rules:
   # Host-specific secrets (each host can only decrypt its own)
   - path_regex: hosts/nauvoo/secrets\.yaml$
@@ -43,6 +48,12 @@ creation_rules:
           - *macbook
           - *admin
 
+  - path_regex: hosts/kayda/secrets\.yaml$
+    key_groups:
+      - age:
+          - *kayda
+          - *admin
+
   # Shared secrets (all hosts can decrypt)
   - path_regex: secrets/common\.yaml$
     key_groups:
@@ -50,4 +61,5 @@ creation_rules:
           - *nauvoo
           - *macbook
           - *razorback
+          - *kayda
           - *admin

@@ -1,6 +1,17 @@
-# Pipewire audio configuration (already in base.nix, but can be extended here)
+# Pipewire audio + printing (desktop-only, not needed on headless servers)
 { config, pkgs, ... }:
 
 {
-  # Additional audio settings if needed
+  # Printing
+  services.printing.enable = true;
+
+  # Audio (PipeWire)
+  services.pulseaudio.enable = false;
+  security.rtkit.enable = true;
+  services.pipewire = {
+    enable = true;
+    alsa.enable = true;
+    alsa.support32Bit = true;
+    pulse.enable = true;
+  };
 }
