@@ -1,5 +1,10 @@
 # HashiCorp Nomad
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   services.nomad = {
@@ -73,7 +78,7 @@
     ExecStartPre = "+${pkgs.coreutils}/bin/mkdir -p /var/lib/nomad /var/lib/nomad/allocs /var/lib/alloc_mounts";
     # Give Nomad time to drain running jobs before systemd force-kills it
     TimeoutStopSec = "120s";
-    KillMode = "mixed";
+    KillMode = lib.mkForce "mixed";
   };
 
   environment.systemPackages = with pkgs; [
