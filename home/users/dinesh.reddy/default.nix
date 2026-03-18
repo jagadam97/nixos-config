@@ -1,5 +1,11 @@
 # Home configuration for user 'dinesh.reddy' on Mac
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  osConfig,
+  lib,
+  ...
+}:
 
 {
   imports = [
@@ -33,6 +39,19 @@
     };
     initContent = ''
       export PATH="/etc/profiles/per-user/dinesh.reddy/bin:$PATH"
+
+      # Load secrets from sops-nix
+      ${lib.optionalString (osConfig.sops.secrets ? juspay_api_key) ''
+        if [[ -r "${osConfig.sops.secrets.juspay_api_key.path}" ]]; then
+          export JUSPAY_API_KEY=$(cat "${osConfig.sops.secrets.juspay_api_key.path}")
+        fi
+      ''}
+      ${lib.optionalString (osConfig.sops.secrets ? notion_api_key) ''
+        if [[ -r "${osConfig.sops.secrets.notion_api_key.path}" ]]; then
+          export NOTION_API_KEY=$(cat "${osConfig.sops.secrets.notion_api_key.path}")
+        fi
+      ''}
+
       # Starship prompt
       eval "$(starship init zsh)"
 
