@@ -97,5 +97,6 @@
 
   environment.systemPackages = with pkgs; [
     nomad
+    wander
   ];
 }
