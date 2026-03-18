@@ -152,6 +152,7 @@ if ffmpeg -hide_banner \
     -c:s copy \
     -map 0 \
     -y "$OUTPUT" 2>&1; then
+  chmod 777 "$OUTPUT" 2>/dev/null || true
   NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
   echo "========================================"
   echo " Done (GPU)"
@@ -172,6 +173,7 @@ else
     -c:s copy \
     -map 0 \
     -y "$OUTPUT" 2>&1
+  chmod 777 "$OUTPUT" 2>/dev/null || true
   NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
   echo "========================================"
   echo " Done (CPU fallback)"
