@@ -44,7 +44,7 @@ SKIPPED=0
 
 find /mnt/hd4000/media -type f -path "*/converted/*.mkv" | sort | while read converted; do
   fname=$(basename "$converted")
-  base="${fname%.*}"
+  base=$(echo "$fname" | sed 's/\.[^.]*$//')
   converted_dir=$(dirname "$converted")
   media_dir=$(dirname "$converted_dir")
 
