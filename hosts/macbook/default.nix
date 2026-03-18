@@ -104,13 +104,15 @@
 
   sops.secrets.juspay_api_key = {
     owner = "dinesh.reddy";
-    mode = "0400";
+    group = "staff";
+    mode = "0440";
     neededForUsers = true;
   };
 
   sops.secrets.notion_api_key = {
     owner = "dinesh.reddy";
-    mode = "0400";
+    group = "staff";
+    mode = "0440";
     neededForUsers = true;
   };
 }
