@@ -103,16 +103,12 @@
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
   sops.secrets.juspay_api_key = {
-    owner = "dinesh.reddy";
-    group = "staff";
-    mode = "0440";
+    mode = "0444";
     neededForUsers = true;
   };
 
   sops.secrets.notion_api_key = {
-    owner = "dinesh.reddy";
-    group = "staff";
-    mode = "0440";
+    mode = "0444";
     neededForUsers = true;
   };
 }
