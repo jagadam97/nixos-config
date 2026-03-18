@@ -22,7 +22,13 @@
     syntaxHighlighting.enable = true;
     oh-my-zsh = {
       enable = true;
-      plugins = [ "git" "sudo" "docker" "kubectl" "direnv" ];
+      plugins = [
+        "git"
+        "sudo"
+        "docker"
+        "kubectl"
+        "direnv"
+      ];
       theme = "robbyrussell";
     };
     initContent = ''
@@ -45,25 +51,6 @@
       alias grep='rg'
       alias find='fd'
       alias top='htop'
-
-      # Load secrets helper
-      load_secrets() {
-        local secret_file="$HOME/repos/nixos-config/hosts/macbook/secrets.yaml"
-        local age_key="$HOME/.config/sops/age/keys.txt"
-        if [[ -f "$secret_file" ]]; then
-          local decrypted=$(SOPS_AGE_KEY_FILE="$age_key" sops --decrypt --output-type json "$secret_file")
-          export JUSPAY_API_KEY=$(echo "$decrypted" | jq -r '.juspay_api_key')
-          export NOTION_API_KEY=$(echo "$decrypted" | jq -r '.notion_api_key')
-        else
-          echo "Secret file not found: $secret_file" >&2
-          return 1
-        fi
-      }
-
-      # Auto-load if secrets file exists
-      if [[ -f "$HOME/repos/nixos-config/hosts/macbook/secrets.yaml" ]]; then
-        load_secrets 2>/dev/null || true
-      fi
 
       jclaude() {
         local MODEL
@@ -139,7 +126,11 @@
   programs.fzf = {
     enable = true;
     enableZshIntegration = true;
-    defaultOptions = [ "--height 40%" "--layout=reverse" "--border" ];
+    defaultOptions = [
+      "--height 40%"
+      "--layout=reverse"
+      "--border"
+    ];
   };
 
   # Bat configuration
@@ -172,6 +163,5 @@
     EDITOR = "nvim";
     PAGER = "less";
     LESS = "-R";
-    SOPS_AGE_KEY_FILE = "$HOME/.config/sops/age/keys.txt";
   };
 }

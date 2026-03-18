@@ -91,6 +91,12 @@
         fi
       ''}
 
+      ${lib.optionalString (osConfig.sops.secrets ? notion_api_key) ''
+        if [[ -r "${osConfig.sops.secrets.notion_api_key.path}" ]]; then
+          export NOTION_API_KEY=$(cat "${osConfig.sops.secrets.notion_api_key.path}")
+        fi
+      ''}
+
       # jclaude function - Juspay AI grid wrapper
       jclaude() {
         local MODEL

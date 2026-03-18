@@ -6,9 +6,8 @@ keys:
   - &nauvoo age1wjqs46cr6jh6zv935x45j5atlam25up5vugkjdmpsy0nz0gz9gvqgnqc5c
 
   # MacBook (Apple Silicon)
-  # Run: nix-shell -p age --run "age-keygen -o ~/.config/sops/age/keys.txt"
-  # Then add the public key from ~/.config/sops/age/keys.txt
-  - &macbook age1w7quzpg490nsum3jnhav3eq697dyzmy0rrfz24s0vy7e2mqauclsp2c9vf
+  # Derived from SSH host key: sudo ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
+  - &macbook age1f7qtq4w5tqzn4g42cp77wux2ce346e6y390vu82r4g99csehmsjs0y55n6
 
   # Your admin key (copy from ~/.config/sops/age/keys.txt)
   # This lets you decrypt all secrets on any machine

@@ -129,12 +129,14 @@
           system = "aarch64-darwin";
           specialArgs = { inherit inputs; };
           modules = [
+            sops-nix.darwinModules.sops
             ./hosts/macbook
             home-manager.darwinModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               home-manager.backupFileExtension = "bak";
+              home-manager.extraSpecialArgs = { inherit inputs; };
               home-manager.users."dinesh.reddy" = import ./home/users/dinesh.reddy;
             }
           ];

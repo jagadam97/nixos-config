@@ -1,5 +1,11 @@
 # MacBook - Apple Silicon Mac
-{ config, pkgs, lib, inputs, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  inputs,
+  ...
+}:
 
 {
   imports = [
@@ -15,10 +21,17 @@
   nix.package = pkgs.nix;
 
   # Enable nix-command and flakes
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 
   # Trust the current user for daemon operations
-  nix.settings.trusted-users = [ "root" "@admin" "dinesh.reddy" ];
+  nix.settings.trusted-users = [
+    "root"
+    "@admin"
+    "dinesh.reddy"
+  ];
 
   # Hostname
   networking.hostName = "macbook";
@@ -82,5 +95,18 @@
   # Launch daemons (for things that need to run as root)
   launchd.daemons = {
     # Add any launch daemons here if needed
+  };
+
+  # SOPS configuration for this host
+  sops.defaultSopsFile = ./secrets.yaml;
+  sops.defaultSopsFormat = "yaml";
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+
+  sops.secrets.juspay_api_key = {
+    owner = "dinesh.reddy";
+  };
+
+  sops.secrets.notion_api_key = {
+    owner = "dinesh.reddy";
   };
 }
