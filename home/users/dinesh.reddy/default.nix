@@ -51,6 +51,11 @@
           export NOTION_API_KEY=$(cat "${osConfig.sops.secrets.notion_api_key.path}")
         fi
       ''}
+      ${lib.optionalString (osConfig.sops.secrets ? bitbucket_token) ''
+        if [[ -r "${osConfig.sops.secrets.bitbucket_token.path}" ]]; then
+          export BITBUCKET_TOKEN=$(cat "${osConfig.sops.secrets.bitbucket_token.path}")
+        fi
+      ''}
 
       # Starship prompt
       eval "$(starship init zsh)"

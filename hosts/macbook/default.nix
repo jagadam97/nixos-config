@@ -111,4 +111,9 @@
     mode = "0444";
     neededForUsers = true;
   };
+
+  sops.secrets.bitbucket_token = {
+    mode = "0444";
+    neededForUsers = true;
+  };
 }
