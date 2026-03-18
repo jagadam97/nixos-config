@@ -8,7 +8,7 @@ keys:
   # MacBook (Apple Silicon)
   # Run: nix-shell -p age --run "age-keygen -o ~/.config/sops/age/keys.txt"
   # Then add the public key from ~/.config/sops/age/keys.txt
-  - &macbook REPLACE_WITH_MACBOOK_AGE_PUBLIC_KEY
+  - &macbook age1w7quzpg490nsum3jnhav3eq697dyzmy0rrfz24s0vy7e2mqauclsp2c9vf
 
   # Your admin key (copy from ~/.config/sops/age/keys.txt)
   # This lets you decrypt all secrets on any machine

@@ -47,10 +47,12 @@
       alias top='htop'
 
       # Load secrets helper
-      load_juspay_api_key() {
+      load_secrets() {
         local secret_file="$HOME/repos/nixos-config/hosts/macbook/secrets.yaml"
         if [[ -f "$secret_file" ]]; then
-          export JUSPAY_API_KEY=$(sops --decrypt "$secret_file" | jq -r '.juspay_api_key')
+          local decrypted=$(sops --decrypt "$secret_file")
+          export JUSPAY_API_KEY=$(echo "$decrypted" | jq -r '.juspay_api_key')
+          export NOTION_API_KEY=$(echo "$decrypted" | jq -r '.notion_api_key')
         else
           echo "Secret file not found: $secret_file" >&2
           return 1
@@ -59,7 +61,7 @@
 
       # Auto-load if secrets file exists
       if [[ -f "$HOME/repos/nixos-config/hosts/macbook/secrets.yaml" ]]; then
-        load_juspay_api_key 2>/dev/null || true
+        load_secrets 2>/dev/null || true
       fi
 
       jclaude() {
