@@ -49,8 +49,9 @@
       # Load secrets helper
       load_secrets() {
         local secret_file="$HOME/repos/nixos-config/hosts/macbook/secrets.yaml"
+        local age_key="$HOME/.config/sops/age/keys.txt"
         if [[ -f "$secret_file" ]]; then
-          local decrypted=$(sops --decrypt "$secret_file")
+          local decrypted=$(SOPS_AGE_KEY_FILE="$age_key" sops --decrypt --output-type json "$secret_file")
           export JUSPAY_API_KEY=$(echo "$decrypted" | jq -r '.juspay_api_key')
           export NOTION_API_KEY=$(echo "$decrypted" | jq -r '.notion_api_key')
         else
@@ -171,5 +172,6 @@
     EDITOR = "nvim";
     PAGER = "less";
     LESS = "-R";
+    SOPS_AGE_KEY_FILE = "$HOME/.config/sops/age/keys.txt";
   };
 }
