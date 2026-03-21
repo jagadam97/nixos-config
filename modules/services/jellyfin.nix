@@ -9,10 +9,10 @@
     configDir = "/var/lib/jellyfin/config";
     cacheDir = "/var/cache/jellyfin";
     logDir = "/var/log/jellyfin";
-    package = pkgs.jellyfin.override {
-      ffmpeg = pkgs.jellyfin-ffmpeg;
-    };
   };
+
+  # Use jellyfin-ffmpeg for hardware transcoding support
+  environment.systemPackages = [ pkgs.jellyfin-ffmpeg ];
 
   # Ensure jellyfin can access media directories
   users.users.jellyfin = {
