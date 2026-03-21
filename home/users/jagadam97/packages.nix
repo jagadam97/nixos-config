@@ -5,13 +5,15 @@
   home.packages = with pkgs; [
     # Terminal
     alacritty
-    
+
     # Secret management
     sops
     age
 
     # Development Tools
-    git lazygit chezmoi
+    git
+    lazygit
+    chezmoi
     gh
     fzf
     ripgrep
@@ -29,12 +31,13 @@
     nano
     direnv
     pay-respects
+    nix-index
     starship
     zoxide
-    
+
     # Nix Development
-    nil  # Nix language server
-    nixd  # Nix language server (alternative)
+    nil # Nix language server
+    nixd # Nix language server (alternative)
 
     # From home/common/packages.nix
     go
@@ -132,7 +135,7 @@
     # AI
     claude-code
     github-copilot-cli
-    
+
     # Fonts
     nerd-fonts.jetbrains-mono
   ];
