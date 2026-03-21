@@ -9,10 +9,17 @@
     configDir = "/var/lib/jellyfin/config";
     cacheDir = "/var/cache/jellyfin";
     logDir = "/var/log/jellyfin";
+    package = pkgs.jellyfin.override {
+      ffmpeg = pkgs.jellyfin-ffmpeg;
+    };
   };
 
   # Ensure jellyfin can access media directories
   users.users.jellyfin = {
-    extraGroups = [ "users" "video" "render" ];
+    extraGroups = [
+      "users"
+      "video"
+      "render"
+    ];
   };
 }
