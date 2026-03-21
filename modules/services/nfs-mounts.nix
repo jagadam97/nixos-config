@@ -12,13 +12,14 @@ let
   # idle-timeout disabled on hd4000 since it's used for active video encoding
   commonOpts = [
     "nfsvers=4"
-    "hard" # retry forever rather than going read-only on timeout
-    "timeo=600" # 60s timeout before retry (10x longer than soft)
-    "retrans=5" # retry 5 times before returning an error
+    "hard"
+    "timeo=150"     # Reduced to 15s to fail/retry faster
+    "retrans=5"
     "noatime"
     "_netdev"
     "x-systemd.automount"
-    "x-systemd.mount-timeout=60"
+    "x-systemd.mount-timeout=10" # How long systemd waits to give up on the mount
+    "x-systemd.idle-timeout=600"
   ];
 in
 {
@@ -29,13 +30,13 @@ in
   fileSystems."/mnt/bx1000" = {
     device = "192.168.4.240:/mnt/pve/bx1000";
     fsType = "nfs";
-    options = commonOpts ++ [ "x-systemd.idle-timeout=600" ];
+    options = commonOpts;
   };
 
   fileSystems."/mnt/bx500" = {
     device = "192.168.4.240:/mnt/pve/bx500";
     fsType = "nfs";
-    options = commonOpts ++ [ "x-systemd.idle-timeout=600" ];
+    options = commonOpts;
   };
 
   # hd4000 is the active media/encoding drive - no idle timeout
