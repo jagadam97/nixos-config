@@ -74,65 +74,37 @@ INPUT_RES=$(ffprobe -v error -select_streams v:0 \
 echo "Input resolution : $INPUT_RES"
 echo ""
 
-# Try GPU encode with NVENC H.264
-if ffmpeg -hide_banner \
-    -hwaccel cuda \
-    -hwaccel_output_format cuda \
-    -i "$INPUT" \
-    -vf scale_cuda=1280:720 \
-    -c:v h264_nvenc \
-    -preset fast \
-    -profile:v main \
-    -rc vbr \
-    -cq 28 \
-    -b:v 5M \
-    -maxrate 8M \
-    -bufsize 10M \
-    -c:a aac \
-    -b:a 128k \
-    -ac 2 \
-    -map_metadata 0 \
-    -movflags +faststart \
-    -map 0 \
-    -y "$OUTPUT" 2>&1; then
-  
-  chmod 777 "$OUTPUT" 2>/dev/null || true
-  ORIG_SIZE=$(du -sh "$INPUT" | cut -f1)
-  NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
-  echo ""
-  echo "========================================"
-  echo " Done (GPU)"
-  echo " Before : $ORIG_SIZE"
-  echo " After  : $NEW_SIZE"
-  echo "========================================"
-else
-  echo ""
-  echo "GPU encode failed, trying CPU fallback..."
-  ffmpeg -hide_banner \
-    -i "$INPUT" \
-    -vf "scale=1280:720" \
-    -c:v libx264 \
-    -preset medium \
-    -profile:v main \
-    -crf 23 \
-    -c:a aac \
-    -b:a 128k \
-    -ac 2 \
-    -map_metadata 0 \
-    -movflags +faststart \
-    -map 0 \
-    -y "$OUTPUT" 2>&1
-  
-  chmod 777 "$OUTPUT" 2>/dev/null || true
-  ORIG_SIZE=$(du -sh "$INPUT" | cut -f1)
-  NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
-  echo ""
-  echo "========================================"
-  echo " Done (CPU fallback)"
-  echo " Before : $ORIG_SIZE"
-  echo " After  : $NEW_SIZE"
-  echo "========================================"
-fi
+# Run GPU encode with NVENC H.264 - fail if NVENC doesn't work
+ffmpeg -hide_banner \
+  -hwaccel cuda \
+  -hwaccel_output_format cuda \
+  -i "$INPUT" \
+  -vf scale_cuda=1280:720 \
+  -c:v h264_nvenc \
+  -preset fast \
+  -profile:v main \
+  -rc vbr \
+  -cq 28 \
+  -b:v 5M \
+  -maxrate 8M \
+  -bufsize 10M \
+  -c:a aac \
+  -b:a 128k \
+  -ac 2 \
+  -map_metadata 0 \
+  -movflags +faststart \
+  -map 0 \
+  -y "$OUTPUT" 2>&1
+
+chmod 777 "$OUTPUT" 2>/dev/null || true
+ORIG_SIZE=$(du -sh "$INPUT" | cut -f1)
+NEW_SIZE=$(du -sh "$OUTPUT" | cut -f1)
+echo ""
+echo "========================================"
+echo " Done"
+echo " Before : $ORIG_SIZE"
+echo " After  : $NEW_SIZE"
+echo "========================================"
 EOF
         ]
       }
