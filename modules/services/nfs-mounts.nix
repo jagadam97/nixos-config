@@ -13,13 +13,13 @@ let
   commonOpts = [
     "nfsvers=4"
     "hard"
-    "timeo=150"     # Reduced to 15s to fail/retry faster
+    "timeo=150" # Reduced to 15s to fail/retry faster
     "retrans=5"
+    "intr" # Allow interruption - helps with shutdown/reboot
     "noatime"
     "_netdev"
     "x-systemd.automount"
     "x-systemd.mount-timeout=10" # How long systemd waits to give up on the mount
-    "x-systemd.idle-timeout=600"
   ];
 in
 {
