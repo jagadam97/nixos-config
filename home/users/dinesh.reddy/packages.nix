@@ -78,7 +78,7 @@
     redis
 
     # AWS / Cloud
-    awscli
+    awscli2
     ssm-session-manager-plugin
     kubectl
 

@@ -89,7 +89,7 @@
     redis
 
     # AWS / Cloud
-    awscli
+    awscli2
     kubectl
 
     # Network Tools
