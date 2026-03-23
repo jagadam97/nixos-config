@@ -71,7 +71,7 @@
       # Aliases
       alias ll='eza -la'
       alias ls='eza'
-      alias cat='bat'
+      alias cat='bat --paging=never -p'
       alias grep='rg'
       alias find='fd'
       alias top='htop'
@@ -176,12 +176,38 @@
   # Tmux configuration
   programs.tmux = {
     enable = true;
-    clock24 = true;
+    mouse = true;
     baseIndex = 1;
     escapeTime = 0;
     keyMode = "vi";
-  };
 
+    plugins = with pkgs.tmuxPlugins; [
+      {
+        plugin = minimal-tmux-status;
+        extraConfig = ''
+          set -g @minimal-tmux-justify "left"
+          set -g @minimal-tmux-indicator-str "  TMUX  "
+          set -g @minimal-tmux-bg "#698DDA" # Zellij blue
+        '';
+      }
+    ];
+
+    extraConfig = ''
+      # --- Zellij-style "Hint Bar" ---
+      # Enable a second status line
+      set -g status 2
+
+      # Style for the second line (the hints)
+      set -g 'status-format[1]' '#[bg=default,fg=white]   #[fg=green]C-b p #[fg=white]Pane  #[fg=blue]C-b t #[fg=white]Tab  #[fg=magenta]C-b s #[fg=white]Search  #[fg=yellow]C-b d #[fg=white]Detach  #[fg=cyan]C-b ? #[fg=white]Help'
+
+      # Toggle the hint bar with 'h'
+      bind-key h if -F '#{==:#{status},2}' 'set -g status on' 'set -g status 2'
+
+      # Add thin pane borders similar to Zellij frames
+      set -g pane-border-style fg='#444444'
+      set -g pane-active-border-style fg='#698DDA'
+    '';
+  };
   # Environment variables
   home.sessionVariables = {
     EDITOR = "nvim";

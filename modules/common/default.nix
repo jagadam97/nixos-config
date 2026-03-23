@@ -5,7 +5,6 @@
   imports = [
     ./base.nix
     ./users.nix
-    ./ssh.nix
     ./nix-settings.nix
   ];
 }

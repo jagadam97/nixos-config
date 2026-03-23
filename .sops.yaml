@@ -4,21 +4,15 @@
 keys:
   # Nauvoo (Linux workstation)
   - &nauvoo age1wjqs46cr6jh6zv935x45j5atlam25up5vugkjdmpsy0nz0gz9gvqgnqc5c
-
   # MacBook (Apple Silicon)
   # Derived from SSH host key: sudo ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
   - &macbook age1f7qtq4w5tqzn4g42cp77wux2ce346e6y390vu82r4g99csehmsjs0y55n6
-
-  # Your admin key (copy from ~/.config/sops/age/keys.txt)
   # This lets you decrypt all secrets on any machine
   - &admin age1wjqs46cr6jh6zv935x45j5atlam25up5vugkjdmpsy0nz0gz9gvqgnqc5c
 
   - &razorback age1a50mjzu5wks736rzhwn8wcn00v83agxuvh6785nfuh2uv3mavunq6hu06r
 
-  # Kayda (Laptop homelab - GTX 1050 Ti)
-  # After install run: sudo ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
-  # Then replace the placeholder below with the output
-  - &kayda REPLACE_WITH_KAYDA_AGE_PUBLIC_KEY
+  - &kayda age150p2u8vqrqg7jmgxqqzy308elrup08p0mln3lpvr8wyj6yswhguqxsz8eq
 
 creation_rules:
   # Host-specific secrets (each host can only decrypt its own)
@@ -40,7 +34,6 @@ creation_rules:
           - *macbook
           - *admin
 
-  # User secrets for dinesh.reddy
   - path_regex: home/users/dinesh\.reddy/secrets\.yaml$
     key_groups:
       - age:
