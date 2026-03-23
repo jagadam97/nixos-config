@@ -72,6 +72,7 @@ let
     echo "[nixos-autoupdate] Running nixos-rebuild switch..."
     ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$REPO#$FLAKE_TARGET"
     echo "[nixos-autoupdate] Rebuild complete."
+    rm -rf "$REPO"
   '';
 in
 {
