@@ -1,6 +1,6 @@
 # SSH configuration
 { config, pkgs, ... }:
-let isKayda = config.networking.hostname = "kayda";
+let isKayda = config.networking.hostName == "kayda";
 
 in
 {
