@@ -51,7 +51,6 @@
             ./modules/services/wireguard.nix
             ./modules/services/cachix.nix
             ./modules/services/nomad.nix
-            ./modules/services/foldingathome.nix
             ./modules/services/honeygain.nix
             ./modules/services/flaresolver.nix
             ./modules/services/disable-suspend.nix
@@ -110,6 +109,8 @@
             ./modules/services/nixos-autoupdate.nix
             ./modules/services/nfs-mounts.nix
             ./modules/services/jellyfin.nix
+            ./modules/services/telegraf.nix
+            ./modules/services/cachix.nix
 
             # Home Manager integration
             home-manager.nixosModules.home-manager

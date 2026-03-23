@@ -1,15 +1,16 @@
 # SSH configuration
 { config, pkgs, ... }:
+let isKayda = config.networking.hostname = "kayda";
 
+in
 {
   services.openssh = {
     enable = true;
 
     settings = {
-      # Key-only authentication - no passwords over SSH
-      PasswordAuthentication = false;
+      PasswordAuthentication = !isKayda;
       PermitRootLogin = "no";
-      KbdInteractiveAuthentication = false;
+      KbdInteractiveAuthentication = !isKayda;
 
       # Allow modern + common older MACs for compatibility
       Macs = [
