@@ -15,6 +15,7 @@ let
   repoDir = "/var/lib/nixos-config";
   sshKey = "/home/jagadam97/.ssh/id_ed25519";
   hostname = config.networking.hostName;
+  discordWebhook = config.services.nixos-autoupdate.discordWebhookUrl;
 
   # Wrapper so GIT_SSH_COMMAND has no spaces (systemd Environment= limitation)
   gitSshWrapper = pkgs.writeShellScript "git-ssh-wrapper" ''
@@ -32,6 +33,25 @@ let
     REPO="${repoDir}"
     REMOTE="${repoUrl}"
     FLAKE_TARGET="${hostname}"
+    DISCORD_WEBHOOK="${discordWebhook}"
+
+    discord_notify() {
+      local color="$1"
+      local title="$2"
+      local message="$3"
+      if [ -n "$DISCORD_WEBHOOK" ]; then
+        ${pkgs.curl}/bin/curl -s -X POST "$DISCORD_WEBHOOK" \
+          -H "Content-Type: application/json" \
+          -d "{\"embeds\":[{\"title\":\"$title\",\"description\":\"$message\",\"color\":$color}]}" \
+          || true
+      fi
+    }
+
+    on_failure() {
+      echo "[nixos-autoupdate] FAILED at line $1"
+      discord_notify 15158332 "NixOS Autoupdate Failed" "Host: \`$FLAKE_TARGET\`\nFailed at line $1 — check \`journalctl -u nixos-autoupdate\` for details."
+    }
+    trap 'on_failure $LINENO' ERR
 
     echo "[nixos-autoupdate] Starting check at $(date)"
 
@@ -42,10 +62,11 @@ let
       echo "[nixos-autoupdate] Clone complete, triggering initial build..."
       ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$REPO#$FLAKE_TARGET"
       echo "[nixos-autoupdate] Initial build done."
+      discord_notify 3066993 "NixOS Autoupdate Success" "Host: \`$FLAKE_TARGET\`\nInitial build applied successfully."
       exit 0
     fi
 
-    # Fetch latest from origin
+    # Fetch latest from origin (force-reset to handle amended/rebased commits)
     cd "$REPO"
     ${pkgs.git}/bin/git fetch origin main 2>&1
 
@@ -59,23 +80,24 @@ let
 
     echo "[nixos-autoupdate] New commits detected: $LOCAL -> $REMOTE_SHA"
 
-    # Don't rebuild while Nomad has running jobs - it will kill active ffmpeg encodes
-    RUNNING_JOBS=$(${pkgs.nomad}/bin/nomad job status 2>/dev/null \
-      | grep -c "running" || true)
-    if [ "$RUNNING_JOBS" -gt 0 ]; then
-      echo "[nixos-autoupdate] Nomad has $RUNNING_JOBS running job(s), skipping rebuild to avoid interruption. Will retry next cycle."
-      exit 0
-    fi
-
-    ${pkgs.git}/bin/git pull --ff-only origin main
+    # Force-reset to remote state (handles amends, rebases, force-pushes)
+    ${pkgs.git}/bin/git reset --hard origin/main
 
     echo "[nixos-autoupdate] Running nixos-rebuild switch..."
     ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$REPO#$FLAKE_TARGET"
     echo "[nixos-autoupdate] Rebuild complete."
+    discord_notify 3066993 "NixOS Autoupdate Success" "Host: \`$FLAKE_TARGET\`\nUpdated \`''${LOCAL:0:7}\` → \`''${REMOTE_SHA:0:7}\` and rebuilt successfully."
     rm -rf "$REPO"
   '';
 in
 {
+  options.services.nixos-autoupdate.discordWebhookUrl = lib.mkOption {
+    type = lib.types.str;
+    default = "https://discord.com/api/webhooks/1486195147195547760/qekPiaLjgMy1lncYvil6TAudN4SEHMSjzCJCUGwM_7kjgOpSPIdzq4BptFmwf7a7lSSn";
+    description = "Discord webhook URL for success/failure notifications. Leave empty to disable.";
+  };
+
+  config = {
   # Ensure repo dir and root .ssh dir exist
   systemd.tmpfiles.rules = [
     "d ${repoDir} 0755 root root -"
@@ -115,4 +137,5 @@ in
       Persistent = true; # catch up if missed while offline
     };
   };
+  }; # end config
 }
