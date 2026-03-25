@@ -47,12 +47,6 @@ let
       fi
     }
 
-    on_failure() {
-      echo "[nixos-autoupdate] FAILED at line $1"
-      discord_notify 15158332 "NixOS Autoupdate Failed" "Host: \`$FLAKE_TARGET\`\nFailed at line $1 — check \`journalctl -u nixos-autoupdate\` for details."
-    }
-    trap 'on_failure $LINENO' ERR
-
     echo "[nixos-autoupdate] Starting check at $(date)"
 
     # Clone if repo doesn't exist yet
@@ -84,9 +78,19 @@ let
     ${pkgs.git}/bin/git reset --hard origin/main
 
     echo "[nixos-autoupdate] Running nixos-rebuild switch..."
+    set +e
     ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$REPO#$FLAKE_TARGET"
-    echo "[nixos-autoupdate] Rebuild complete."
-    discord_notify 3066993 "NixOS Autoupdate Success" "Host: \`$FLAKE_TARGET\`\nUpdated \`''${LOCAL:0:7}\` → \`''${REMOTE_SHA:0:7}\` and rebuilt successfully."
+    REBUILD_EXIT=$?
+    set -e
+
+    if [ $REBUILD_EXIT -eq 0 ]; then
+      echo "[nixos-autoupdate] Rebuild complete."
+      discord_notify 3066993 "NixOS Autoupdate Success" "Host: \`$FLAKE_TARGET\`\nUpdated \`''${LOCAL:0:7}\` → \`''${REMOTE_SHA:0:7}\` and rebuilt successfully."
+    else
+      echo "[nixos-autoupdate] Rebuild FAILED (exit code $REBUILD_EXIT)."
+      discord_notify 15158332 "NixOS Autoupdate Failed" "Host: \`$FLAKE_TARGET\`\n\`nixos-rebuild switch\` exited with code \`$REBUILD_EXIT\`\nCommit: \`''${REMOTE_SHA:0:7}\`\nCheck: \`journalctl -u nixos-autoupdate\`"
+      exit $REBUILD_EXIT
+    fi
   '';
 in
 {
