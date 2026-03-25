@@ -87,7 +87,6 @@ let
     ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$REPO#$FLAKE_TARGET"
     echo "[nixos-autoupdate] Rebuild complete."
     discord_notify 3066993 "NixOS Autoupdate Success" "Host: \`$FLAKE_TARGET\`\nUpdated \`''${LOCAL:0:7}\` → \`''${REMOTE_SHA:0:7}\` and rebuilt successfully."
-    rm -rf "$REPO"
   '';
 in
 {
