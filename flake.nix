@@ -105,7 +105,6 @@
             ./modules/nvidia
             ./modules/dashboard
             ./modules/services/disable-suspend.nix
-            ./modules/services/nix-ld.nix
             ./modules/services/nixos-autoupdate.nix
             ./modules/services/nfs-mounts.nix
             ./modules/services/jellyfin.nix

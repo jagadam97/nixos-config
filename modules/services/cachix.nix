@@ -6,6 +6,7 @@
   nix.settings.substituters = [
     "https://cache.nixos.org"
     "https://nix-community.cachix.org"
+    "https://jagadam97.cachix.org"
   ];
 
   nix.settings.trusted-public-keys = [
