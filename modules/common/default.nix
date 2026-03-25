@@ -6,5 +6,6 @@
     ./base.nix
     ./users.nix
     ./nix-settings.nix
+    ./ssh.nix
   ];
 }
