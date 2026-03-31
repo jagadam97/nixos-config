@@ -11,6 +11,9 @@
   # Load NVIDIA proprietary drivers
   services.xserver.videoDrivers = [ "nvidia" ];
 
+  # Use legacy NVIDIA driver 580.xx - GTX 1050 Ti is not supported by current driver
+  hardware.nvidia.package = config.boot.kernelPackages.nvidiaPackages.legacy_580;
+
   hardware.nvidia = {
     # Use proprietary driver (required for CUDA/NVENC)
     open = false;
@@ -53,6 +56,15 @@
     # GPU monitoring tools
     nvtopPackages.nvidia
     cudaPackages.cuda_nvcc
+
+    # Wrapper to ensure NVIDIA is used for compute workloads
+    (pkgs.writeShellScriptBin "nvidia-offload" ''
+      export __NV_PRIME_RENDER_OFFLOAD=1
+      export __NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G0
+      export __GLX_VENDOR_LIBRARY_NAME=nvidia
+      export __VK_LAYER_NV_optimus=NVIDIA_only
+      exec "$@"
+    '')
   ];
 
   # Environment variables for NVIDIA offload

@@ -30,7 +30,7 @@
     "nvidia_uvm"
     "nvidia_drm"
   ];
-  boot.extraModulePackages = [ config.boot.kernelPackages.nvidia_x11 ];
+  boot.extraModulePackages = [ config.boot.kernelPackages.nvidiaPackages.legacy_580 ];
 
   # Disko manages fileSystems - no need to define them here
   # They are declared in disko.nix
