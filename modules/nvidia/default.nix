@@ -77,7 +77,7 @@
     after = [ "nvidia-persistenced.service" ];
     serviceConfig = {
       Type = "oneshot";
-      ExecStart = "${pkgs.nvidia-settings}/bin/nvidia-smi -pm 1";
+      ExecStart = "${config.boot.kernelPackages.nvidia_x11}/bin/nvidia-smi -pm 1";
       RemainAfterExit = true;
     };
   };
