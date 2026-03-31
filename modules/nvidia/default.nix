@@ -1,12 +1,5 @@
 # NVIDIA GTX 1050 Ti Mobile - PRIME offload configuration
 # Intel iGPU handles display, NVIDIA handles compute (CUDA, ffmpeg hwaccel)
-#
-# TODO: After installation, find your PCI bus IDs with:
-#   lspci | grep -E 'VGA|3D'
-# Example output:
-#   00:02.0 VGA compatible controller: Intel HD Graphics 630
-#   01:00.0 3D controller: NVIDIA GTX 1050 Ti Mobile
-# Then set intelBusId = "PCI:0:2:0" and nvidiaBusId = "PCI:1:0:0"
 {
   config,
   pkgs,
@@ -27,7 +20,7 @@
 
     # Power management for laptops (helps with stability)
     powerManagement.enable = true;
-    powerManagement.finegrained = false;
+    powerManagement.finegrained = true;
 
     # PRIME offload: Intel renders display, NVIDIA used on-demand for compute
     prime = {
@@ -36,10 +29,8 @@
         enableOffloadCmd = true; # provides `nvidia-offload` command
       };
 
-      # TODO: Replace with actual PCI bus IDs from `lspci | grep -E 'VGA|3D'`
-      # Format: "PCI:bus:device:function"
-      intelBusId = "PCI:0:2:0"; # TODO: verify with lspci
-      nvidiaBusId = "PCI:1:0:0"; # TODO: verify with lspci
+      intelBusId = "PCI:0:2:0";
+      nvidiaBusId = "PCI:1:0:0";
     };
   };
 
