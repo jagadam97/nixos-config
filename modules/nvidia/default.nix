@@ -69,18 +69,9 @@
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
   };
 
-  # Ensure NVIDIA persistence mode is enabled on boot
-  # This prevents the GPU from going to sleep when the lid is closed
-  systemd.services.nvidia-persistence-mode = {
-    description = "Enable NVIDIA Persistence Mode";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "nvidia-persistenced.service" ];
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${lib.getBin config.boot.kernelPackages.nvidia_x11}/bin/nvidia-smi -pm 1";
-      RemainAfterExit = true;
-    };
-  };
+  # NVIDIA persistence daemon is already enabled above (nvidiaPersistenced = true)
+  # This keeps the driver loaded even without a display attached
+  # The nvidia-persistenced service already enables persistence mode when it starts
 
   # Kernel parameters to prevent GPU from sleeping on lid close
   boot.kernelParams = [
