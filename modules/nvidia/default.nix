@@ -1,5 +1,5 @@
-# NVIDIA GTX 1050 Ti Mobile - PRIME offload configuration
-# Intel iGPU handles display, NVIDIA handles compute (CUDA, ffmpeg hwaccel)
+# NVIDIA GTX 1050 Ti Mobile - Headless server configuration
+# For headless operation (no display), NVIDIA handles all compute (CUDA, NVENC, etc.)
 {
   config,
   pkgs,
@@ -15,32 +15,24 @@
     # Use proprietary driver (required for CUDA/NVENC)
     open = false;
 
-    # Modesetting required for PRIME
+    # Modesetting required for proper driver initialization
     modesetting.enable = true;
 
-    # Power management for laptops (helps with stability)
-    # Disable finegrained power management to prevent GPU from sleeping when lid closed
+    # Power management - disable all sleep states for headless operation
+    # This prevents the GPU from sleeping when lid is closed
     powerManagement.enable = false;
     powerManagement.finegrained = false;
 
-    # Force the NVIDIA GPU to stay on - critical for headless/server operation
+    # Enable nvidia-settings utility
     nvidiaSettings = true;
 
-    # PRIME offload: Intel renders display, NVIDIA used on-demand for compute
-    prime = {
-      offload = {
-        enable = true;
-        enableOffloadCmd = true; # provides `nvidia-offload` command
-      };
+    # NVIDIA persistence daemon - keeps GPU initialized even when no display attached
+    # This is critical for headless/lid-closed operation
+    nvidiaPersistenced = true;
 
-      intelBusId = "PCI:0:2:0";
-      nvidiaBusId = "PCI:1:0:0";
-    };
+    # No PRIME configuration for headless server - NVIDIA is the only GPU used
+    # PRIME is for hybrid graphics laptops with displays
   };
-
-  # NVIDIA persistence daemon - keeps GPU initialized even when no display
-  # This is crucial for headless/lid-closed operation
-  hardware.nvidia.nvidiaPersistenced = true;
 
   # OpenGL / hardware acceleration
   hardware.graphics = {
