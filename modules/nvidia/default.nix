@@ -19,8 +19,12 @@
     modesetting.enable = true;
 
     # Power management for laptops (helps with stability)
-    powerManagement.enable = true;
-    powerManagement.finegrained = true;
+    # Disable finegrained power management to prevent GPU from sleeping when lid closed
+    powerManagement.enable = false;
+    powerManagement.finegrained = false;
+
+    # Force the NVIDIA GPU to stay on - critical for headless/server operation
+    nvidiaSettings = true;
 
     # PRIME offload: Intel renders display, NVIDIA used on-demand for compute
     prime = {
@@ -33,6 +37,10 @@
       nvidiaBusId = "PCI:1:0:0";
     };
   };
+
+  # NVIDIA persistence daemon - keeps GPU initialized even when no display
+  # This is crucial for headless/lid-closed operation
+  hardware.nvidia.nvidiaPersistenced = true;
 
   # OpenGL / hardware acceleration
   hardware.graphics = {
@@ -60,4 +68,24 @@
     LIBVA_DRIVER_NAME = "nvidia";
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
   };
+
+  # Ensure NVIDIA persistence mode is enabled on boot
+  # This prevents the GPU from going to sleep when the lid is closed
+  systemd.services.nvidia-persistence-mode = {
+    description = "Enable NVIDIA Persistence Mode";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "nvidia-persistenced.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.nvidia-settings}/bin/nvidia-smi -pm 1";
+      RemainAfterExit = true;
+    };
+  };
+
+  # Kernel parameters to prevent GPU from sleeping on lid close
+  boot.kernelParams = [
+    "nvidia-drm.modeset=1"
+    # Prevent ACPI sleep on NVIDIA GPU
+    "acpi_sleep=nonvs"
+  ];
 }
