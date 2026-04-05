@@ -1,5 +1,9 @@
 # Packages migrated from Homebrew
-{ config, pkgs, ... }:
+{ config, pkgs, osConfig, ... }:
+
+let isKayda = osConfig.networking.hostName == "kayda";
+
+in
 
 {
   home.packages = with pkgs; [
@@ -132,11 +136,13 @@
     # Other
     protobuf
 
-    # AI
-    claude-code
-    github-copilot-cli
-
     # Fonts
     nerd-fonts.jetbrains-mono
-  ];
+  ] ++ (
+      if !isKayda 
+        then [
+          claude-code
+          github-copilot
+        ]
+        else []);
 }

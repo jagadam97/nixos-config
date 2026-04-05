@@ -7,11 +7,6 @@
     go
     cmake
     gcc
-    claude-code
-    github-copilot-cli
-
-    # Editors
-    vscode
 
     # System utilities
     mosh
