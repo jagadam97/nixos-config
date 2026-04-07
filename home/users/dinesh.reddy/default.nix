@@ -40,6 +40,9 @@
     initContent = ''
       export PATH="/etc/profiles/per-user/dinesh.reddy/bin:$PATH"
 
+      # oh-my-claudecode state (keep .omc out of repos)
+      export OMC_STATE_DIR="$HOME/.claude/omc"
+
       # Claude Code OpenTelemetry → Grafana Cloud
       export CLAUDE_CODE_ENABLE_TELEMETRY=1
       export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
