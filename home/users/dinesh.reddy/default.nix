@@ -40,6 +40,16 @@
     initContent = ''
       export PATH="/etc/profiles/per-user/dinesh.reddy/bin:$PATH"
 
+      # Claude Code OpenTelemetry → Grafana Cloud
+      export CLAUDE_CODE_ENABLE_TELEMETRY=1
+      export CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1
+      export OTEL_METRICS_EXPORTER=otlp
+      export OTEL_LOGS_EXPORTER=otlp
+      export OTEL_TRACES_EXPORTER=otlp
+      export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+      export OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-ap-south-0.grafana.net/otlp
+      export OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=cumulative
+
       # Load secrets from sops-nix
       ${lib.optionalString (osConfig.sops.secrets ? juspay_api_key) ''
         if [[ -r "${osConfig.sops.secrets.juspay_api_key.path}" ]]; then
@@ -54,6 +64,13 @@
       ${lib.optionalString (osConfig.sops.secrets ? bitbucket_token) ''
         if [[ -r "${osConfig.sops.secrets.bitbucket_token.path}" ]]; then
           export BITBUCKET_TOKEN=$(cat "${osConfig.sops.secrets.bitbucket_token.path}")
+        fi
+      ''}
+      ${lib.optionalString (osConfig.sops.secrets ? grafana_otlp_token) ''
+        if [[ -r "${osConfig.sops.secrets.grafana_otlp_token.path}" ]]; then
+          local _grafana_token
+          _grafana_token=$(cat "${osConfig.sops.secrets.grafana_otlp_token.path}")
+          export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf '542971:%s' "$_grafana_token" | base64 | tr -d '\n')"
         fi
       ''}
 
@@ -213,5 +230,6 @@
     EDITOR = "nvim";
     PAGER = "less";
     LESS = "-R";
+
   };
 }

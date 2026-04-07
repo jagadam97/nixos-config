@@ -116,4 +116,9 @@
     mode = "0444";
     neededForUsers = true;
   };
+
+  sops.secrets.grafana_otlp_token = {
+    mode = "0444";
+    neededForUsers = true;
+  };
 }
