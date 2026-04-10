@@ -20,6 +20,9 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-index-database.url = "github:nix-community/nix-index-database";
+    nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -30,6 +33,7 @@
       home-manager,
       sops-nix,
       disko,
+      nix-index-database,
       ...
     }@inputs:
     let
@@ -56,6 +60,8 @@
             ./modules/services/disable-suspend.nix
             ./modules/services/nix-ld.nix
             ./modules/services/nginx.nix # Uncomment to enable TCP/UDP stream proxy
+            nix-index-database.nixosModules.default
+            { programs.nix-index-database.comma.enable = true; }
 
             # Home Manager integration
             home-manager.nixosModules.home-manager
@@ -81,6 +87,8 @@
             ./modules/services/cachix.nix
             ./modules/services/disable-suspend.nix
             ./modules/services/nix-ld.nix
+            nix-index-database.nixosModules.default
+            { programs.nix-index-database.comma.enable = true; }
 
             # Home Manager integration
             home-manager.nixosModules.home-manager
@@ -110,6 +118,8 @@
             ./modules/services/jellyfin.nix
             ./modules/services/telegraf.nix
             ./modules/services/cachix.nix
+            nix-index-database.nixosModules.default
+            { programs.nix-index-database.comma.enable = true; }
 
             # Home Manager integration
             home-manager.nixosModules.home-manager
@@ -129,9 +139,11 @@
           system = "aarch64-darwin";
           specialArgs = { inherit inputs; };
           modules = [
+            nix-index-database.darwinModules.nix-index
             sops-nix.darwinModules.sops
             ./hosts/macbook
             home-manager.darwinModules.home-manager
+            { programs.nix-index-database.comma.enable = true; }
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
