@@ -62,7 +62,7 @@
   # Note: VS Code is installed via Homebrew cask in gui-apps.nix
   environment.systemPackages = with pkgs; [
     alacritty
-    ghostty
+    ghostty-bin
   ];
 
   # System defaults
