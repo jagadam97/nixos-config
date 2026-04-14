@@ -10,6 +10,10 @@
           server 10.10.71.83:22;
       }
 
+      upstream backend_incus {
+          server 10.10.68.137:22;
+      }
+
       upstream backend_9093 {
           server 10.10.71.83:8080;
       }
@@ -21,7 +25,7 @@
 
       server {
           listen 8112;
-          proxy_pass backend_9093;
+          proxy_pass backend_incus;
       }
     '';
   };
