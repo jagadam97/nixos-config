@@ -1,18 +1,22 @@
-# User-specific packages
-{ config, pkgs, ... }:
+# Common packages for all users
+{ config, pkgs, osConfig, ... }:
+
+let isKayda = osConfig.networking.hostName == "kayda";
+
+in
 
 {
   home.packages = with pkgs; [
-    # Development tools
+    # System utilities (all hosts)
+    mosh
+    ffmpeg
+  ] ++ (if !isKayda then [
+    # Dev tools (workstations only)
     go
     cmake
     gcc
-
-    # System utilities
-    mosh
     aria2
-    ffmpeg
     chafa
     zellij
-  ];
+  ] else []);
 }

@@ -1,4 +1,4 @@
-# Packages migrated from Homebrew
+# Packages for jagadam97 - split into server essentials and dev tools
 { config, pkgs, osConfig, ... }:
 
 let isKayda = osConfig.networking.hostName == "kayda";
@@ -7,18 +7,12 @@ in
 
 {
   home.packages = with pkgs; [
-    # Terminal
-    alacritty
-
     # Secret management
     sops
     age
 
-    # Development Tools
+    # Server / admin essentials
     git
-    lazygit
-    chezmoi
-    gh
     fzf
     ripgrep
     fd
@@ -39,17 +33,54 @@ in
     starship
     zoxide
 
-    # Nix Development
-    nil # Nix language server
-    nixd # Nix language server (alternative)
+    # Network
+    wget
+    curl
+    rsync
+    mosh
 
-    # From home/common/packages.nix
-    go
+    # Compression
+    gzip
+    bzip2
+    xz
+    unzip
+    zip
+    zstd
+
+    # Text processing
+    gawk
+    gnused
+    gnugrep
+    coreutils
+    findutils
+
+    # Encryption
+    gnupg
+
+    # Media (Jellyfin transcoding)
+    ffmpeg
+
+    # Fonts
+    nerd-fonts.jetbrains-mono
+  ] ++ (if !isKayda then [
+    # --- Workstation-only packages below ---
+
+    # Terminal / GUI
+    alacritty
     zed-editor
+
+    # Dev workflow
+    lazygit
+    chezmoi
+    gh
     aria2
     chafa
 
-    # Build Tools
+    # Nix language servers
+    nil
+    nixd
+
+    # Build tools
     gcc
     cmake
     ninja
@@ -61,6 +92,7 @@ in
     ccache
 
     # Languages
+    go
     nodejs
     python3
     ruby
@@ -68,81 +100,46 @@ in
     llvm
     clang-tools
 
-    # Python Tools
+    # Python
     pyenv
     black
 
-    # Haskell Tools
+    # Haskell
     hlint
     stylish-haskell
 
-    # OCaml Tools
+    # OCaml
     ocaml
     opam
     dune
 
-    # Container Tools
+    # Containers
     docker
     docker-compose
     podman
     podman-compose
 
-    # Database Clients
+    # Database clients
     mariadb.client
     postgresql
     redis
 
-    # AWS / Cloud
+    # Cloud
     awscli2
     kubectl
 
-    # Network Tools
-    wget
-    curl
-    rsync
-    mosh
+    # GUI / desktop tools
     putty
     scrcpy
 
-    # Compression
-    gzip
-    bzip2
-    xz
-    unzip
-    zip
-    zstd
-
-    # Text Processing
-    gawk
-    gnused
-    gnugrep
-    coreutils
-    findutils
-
-    # Terminal Multiplexer
-    tmux
-
-    # Documentation
+    # Documentation / misc
     pandoc
-
-    # Encryption
-    gnupg
-
-    # Media Tools
-    ffmpeg
     tesseract
     sqlite
-
-    # Other
     protobuf
 
-    # Fonts
-    nerd-fonts.jetbrains-mono
-  ] ++ (
-      if !isKayda 
-        then [
-          claude-code
-          github-copilot
-        ]
-        else []);
+    # AI tools
+    claude-code
+    github-copilot
+  ] else []);
 }

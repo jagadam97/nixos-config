@@ -1,5 +1,5 @@
-# Disk layout for kayda - nvme0n1 (465.8GB)
-# GPT + EFI + ext4 root
+# Disk layout for kayda - nvme0n1 (1TB)
+# GPT + EFI + btrfs with subvolumes
 { ... }:
 
 {
@@ -24,9 +24,30 @@
             root = {
               size = "100%";
               content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/";
+                type = "btrfs";
+                extraArgs = [ "-f" ];
+                subvolumes = {
+                  "@root" = {
+                    mountpoint = "/";
+                    mountOptions = [ "compress=zstd:1" "noatime" "ssd" ];
+                  };
+                  "@nix" = {
+                    mountpoint = "/nix";
+                    mountOptions = [ "compress=zstd:1" "noatime" "ssd" ];
+                  };
+                  "@home" = {
+                    mountpoint = "/home";
+                    mountOptions = [ "compress=zstd:1" "noatime" "ssd" ];
+                  };
+                  "@varlib" = {
+                    mountpoint = "/var/lib";
+                    mountOptions = [ "compress=zstd:1" "noatime" "ssd" ];
+                  };
+                  "@log" = {
+                    mountpoint = "/var/log";
+                    mountOptions = [ "compress=zstd:1" "noatime" "ssd" ];
+                  };
+                };
               };
             };
           };

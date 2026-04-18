@@ -49,6 +49,9 @@
   # Timezone
   time.timeZone = "Asia/Kolkata";
 
+  # Disable aarch64 cross-compilation (not needed on this server)
+  nix.settings.extra-platforms = lib.mkForce [];
+
   # System state version
   system.stateVersion = "26.05";
 
