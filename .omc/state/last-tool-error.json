@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"ssh -t -o ConnectTimeout=5 jagadam97@192.168.4.200 \\\"sudo smartctl -a /dev/nvme0n1\\\" 2>&1\",\"timeout\":15000,\"description\":\"Get SMART data from kayda with TTY for sudo\"}",
+  "error": "Exit code 1\nPseudo-terminal will not be allocated because stdin is not a terminal.\r\nsudo: a terminal is required to read the password; either use ssh's -t option or configure an askpass helper\nsudo: a password is required",
+  "timestamp": "2026-04-17T17:10:29.566Z",
+  "retry_count": 2
+}

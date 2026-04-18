@@ -80,7 +80,19 @@
   # Kernel parameters to prevent GPU from sleeping on lid close
   boot.kernelParams = [
     "nvidia-drm.modeset=1"
-    # Prevent ACPI sleep on NVIDIA GPU
     "acpi_sleep=nonvs"
+    "consoleblank=0"
   ];
+
+  # Force framebuffer unblank — NVIDIA driver overrides kernel consoleblank
+  systemd.services.fb-unblank = {
+    description = "Disable framebuffer blanking";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-vconsole-setup.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.bash}/bin/bash -c 'echo 0 > /sys/class/graphics/fb0/blank'";
+      RemainAfterExit = true;
+    };
+  };
 }
