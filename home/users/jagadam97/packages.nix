@@ -140,6 +140,5 @@ in
 
     # AI tools
     claude-code
-    github-copilot
   ] else []);
 }

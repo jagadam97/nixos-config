@@ -47,9 +47,11 @@
           specialArgs = { inherit inputs; };
           modules = [
             sops-nix.nixosModules.sops
+            disko.nixosModules.disko
             ./hosts/nauvoo
             ./modules/common
             ./modules/desktop
+            ./modules/desktop/gnome.nix
             ./modules/services/docker.nix
             ./modules/services/telegraf.nix
             ./modules/services/wireguard.nix
@@ -81,9 +83,11 @@
           specialArgs = { inherit inputs; };
           modules = [
             sops-nix.nixosModules.sops
+            disko.nixosModules.disko
             ./hosts/razorback
             ./modules/common
             ./modules/desktop
+            ./modules/desktop/gnome.nix
             ./modules/services/docker.nix
             ./modules/services/cachix.nix
             ./modules/services/disable-suspend.nix

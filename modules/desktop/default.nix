@@ -1,9 +1,8 @@
-# Desktop environment (KDE Plasma 6)
+# Desktop environment (shared base - DE imported per-host)
 { config, pkgs, lib, ... }:
 
 {
   imports = [
-    ./kde.nix
     ./pipewire.nix
   ];
 

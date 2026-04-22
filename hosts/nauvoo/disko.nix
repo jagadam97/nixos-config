@@ -1,5 +1,6 @@
-# Disk layout for kayda - nvme0n1 (1TB)
+# Disk layout for nauvoo - nvme0n1
 # GPT + EFI + btrfs with subvolumes
+# NOTE: Verify device path matches your hardware (lsblk)
 { ... }:
 
 {
