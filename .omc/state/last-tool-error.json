@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"grep -r \\\"disko\\\" /Users/dinesh.reddy/repos/nixos-config --include=\\\"*.nix\\\" 2>/dev/null\"}",
-  "error": "Exit code 2",
-  "timestamp": "2026-04-22T03:39:12.096Z",
-  "retry_count": 2
-}
