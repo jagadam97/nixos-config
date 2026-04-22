@@ -9,10 +9,6 @@
       image = "honeygain/honeygain";
       autoStart = true;
 
-      environmentFiles = [
-        "/etc/secrets/honeygain.env"
-      ];
-
       # CLI flags are REQUIRED
       cmd = [
         "-tou-accept"
