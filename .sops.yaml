@@ -3,12 +3,12 @@
 
 keys:
   # Nauvoo (Linux workstation)
-  - &nauvoo age1wjqs46cr6jh6zv935x45j5atlam25up5vugkjdmpsy0nz0gz9gvqgnqc5c
+  - &nauvoo age1ml4qdt5lsjksvgfm46aqe4wazy899kzjeu05g6k82l8ny8p3aywq50s4ua
   # MacBook (Apple Silicon)
   # Derived from SSH host key: sudo ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
   - &macbook age1f7qtq4w5tqzn4g42cp77wux2ce346e6y390vu82r4g99csehmsjs0y55n6
-  # This lets you decrypt all secrets on any machine
-  - &admin age1wjqs46cr6jh6zv935x45j5atlam25up5vugkjdmpsy0nz0gz9gvqgnqc5c
+  # Admin key - macbook (used to manage secrets from dev machine)
+  - &admin age1f7qtq4w5tqzn4g42cp77wux2ce346e6y390vu82r4g99csehmsjs0y55n6
 
   - &razorback age1a50mjzu5wks736rzhwn8wcn00v83agxuvh6785nfuh2uv3mavunq6hu06r
 
