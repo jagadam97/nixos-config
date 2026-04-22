@@ -6,25 +6,22 @@
 
     # The 'stream' block is used for TCP/UDP proxying
     streamConfig = ''
-      upstream backend_9092 {
-          server 10.10.71.83:22;
+      upstream backend_alienx {
+          server 10.10.69.242:22;
       }
 
-      upstream backend_fazal {
-          server 10.10.70.237:22;
+      upstream backend_tail_alienx {
+          server 100.121.203.82:22;
       }
 
       upstream backend_incus {
           server 10.10.68.137:22;
       }
 
-      upstream backend_9093 {
-          server 10.10.71.83:8080;
-      }
 
       server {
           listen 8111;
-          proxy_pass backend_9092;
+          proxy_pass backend_alienx;
       }
 
       server {
@@ -34,7 +31,7 @@
 
       server {
           listen 8113;
-          proxy_pass backend_fazal;
+          proxy_pass backend_tail_alienx;
       }
     '';
   };
