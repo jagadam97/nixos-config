@@ -13,7 +13,7 @@
 let
   repoUrl = "git@github.com:jagadam97/nixos-config.git";
   repoDir = "/var/lib/nixos-config";
-  sshKey = "/home/jagadam97/.ssh/id_ed25519";
+  sshKey = "/root/.ssh/id_ed25519";
   hostname = config.networking.hostName;
   discordWebhook = config.services.nixos-autoupdate.discordWebhookUrl;
 
