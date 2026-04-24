@@ -94,6 +94,7 @@ in
     # Languages
     go
     nodejs
+    bun
     python3
     ruby
     openjdk
@@ -123,6 +124,7 @@ in
     mariadb.client
     postgresql
     redis
+    clickhouse
 
     # Cloud
     awscli2
