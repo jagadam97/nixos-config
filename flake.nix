@@ -87,7 +87,7 @@
             ./hosts/razorback
             ./modules/common
             ./modules/desktop
-            ./modules/desktop/gnome.nix
+            ./modules/desktop/kde.nix
             ./modules/services/docker.nix
             ./modules/services/cachix.nix
             ./modules/services/disable-suspend.nix

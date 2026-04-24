@@ -26,6 +26,7 @@
     extraPackages = with pkgs; [
       intel-media-driver  # VAAPI driver for newer Intel GPUs
       intel-compute-runtime  # OpenCL support
+      vpl-gpu-rt  # oneVPL runtime for Arc AV1/HEVC/H.264 HW encode+decode
       libvdpau-va-gl
       libva-vdpau-driver
     ];

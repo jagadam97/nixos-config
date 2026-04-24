@@ -10,6 +10,15 @@
   # Hostname
   networking.hostName = "razorback";
 
+  environment.systemPackages = with pkgs; [
+    handbrake
+    jellyfin-media-player
+    mpv
+  ];
+
+  # Latest kernel for Arrow Lake + HDR Wayland
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
   # User configuration
   users.users.jagadam97 = {
     isNormalUser = true;
