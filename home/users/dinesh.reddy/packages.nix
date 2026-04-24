@@ -8,6 +8,7 @@
     age
 
     # Development Tools
+    neovim
     git lazygit chezmoi
     gh
     fzf

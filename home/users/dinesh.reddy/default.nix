@@ -158,12 +158,10 @@
     };
   };
 
-  # Neovim configuration
-  programs.neovim = {
-    enable = true;
-    defaultEditor = true;
-    viAlias = true;
-    vimAlias = true;
+  # Neovim config owned by chezmoi; install binary only + shell aliases
+  home.shellAliases = {
+    vi = "nvim";
+    vim = "nvim";
   };
 
   # Fzf configuration
