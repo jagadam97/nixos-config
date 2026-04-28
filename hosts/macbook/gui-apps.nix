@@ -28,6 +28,7 @@
       "postman"
       "rectangle"
       "slack"
+      "spotify"
       "visual-studio-code"
       "vivaldi"
       "zed"
