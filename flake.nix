@@ -89,7 +89,6 @@
             ./modules/desktop
             ./modules/desktop/kde.nix
             ./modules/services/cachix.nix
-            ./modules/services/disable-suspend.nix
             ./modules/services/nix-ld.nix
             ./modules/services/nfs-mounts.nix
             nix-index-database.nixosModules.default

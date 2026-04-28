@@ -10,7 +10,7 @@ keys:
   # Admin key - macbook (used to manage secrets from dev machine)
   - &admin age1f7qtq4w5tqzn4g42cp77wux2ce346e6y390vu82r4g99csehmsjs0y55n6
 
-  - &razorback age1a50mjzu5wks736rzhwn8wcn00v83agxuvh6785nfuh2uv3mavunq6hu06r
+  - &razorback age1kdrykx2nakdytn9amrelqks96jkx2ge6rkw9d89yq38mj74mmq9sz6962r
 
   - &kayda age150p2u8vqrqg7jmgxqqzy308elrup08p0mln3lpvr8wyj6yswhguqxsz8eq
 
