@@ -5,6 +5,8 @@
   imports = [
     ./hardware.nix
     ./disko.nix
+    ../../modules/services/docker.nix
+    ../../modules/services/flaresolver.nix
   ];
 
   # Hostname
