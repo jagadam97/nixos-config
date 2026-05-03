@@ -5,8 +5,9 @@
   nix.settings = {
     experimental-features = [ "nix-command" "flakes" ];
     trusted-users = [ "root" "dj" "jagadam97" ];
-    # Enable building for aarch64-linux via QEMU binfmt
-    extra-platforms = [ "aarch64-linux" ];
+    # i686-linux: native 32-bit support on x86_64 (needed for 32-bit NVIDIA libs).
+    # aarch64-linux: cross-builds via QEMU binfmt (where boot.binfmt is enabled).
+    extra-platforms = [ "i686-linux" "aarch64-linux" ];
   };
 
   # Garbage collection
