@@ -50,8 +50,9 @@
   # Timezone
   time.timeZone = "Asia/Kolkata";
 
-  # Disable aarch64 cross-compilation (not needed on this server)
-  nix.settings.extra-platforms = lib.mkForce [];
+  # Leave nix.settings.extra-platforms at its default so i686-linux is included
+  # (needed for 32-bit NVIDIA libs via hardware.graphics.enable32Bit).
+  # nix.settings.extra-platforms = lib.mkForce [];
 
   # System state version
   system.stateVersion = "26.05";
