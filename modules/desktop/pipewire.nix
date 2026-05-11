@@ -1,6 +1,4 @@
-# Pipewire audio + printing (desktop-only, not needed on headless servers)
 { config, pkgs, ... }:
-
 {
   # Printing
   services.printing.enable = true;
@@ -14,4 +12,8 @@
     alsa.support32Bit = true;
     pulse.enable = true;
   };
+
+  # EasyEffects for EQ / bass control
+  programs.dconf.enable = true;
+  environment.systemPackages = with pkgs; [ easyeffects ];
 }
