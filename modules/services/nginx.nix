@@ -7,7 +7,7 @@
     # The 'stream' block is used for TCP/UDP proxying
     streamConfig = ''
       upstream backend_alienx {
-          server 10.10.69.242:22;
+          server 10.10.29.243:22;
       }
 
       upstream backend_tail_alienx {
@@ -15,7 +15,7 @@
       }
 
       upstream backend_incus {
-          server 10.10.71.176:22;
+          server 10.10.26.210:22;
       }
 
 
