@@ -60,6 +60,11 @@
     "net.ipv4.conf.all.rp_filter" = 2;
     "net.ipv4.conf.default.rp_filter" = 0;
     "net.ipv4.ip_forward" = 1;
+    # ISP advertises an IPv6 default route but never hands out a global
+    # prefix, so every AAAA connection wastes ~5s on a SYN timeout before
+    # falling back to v4. Disable v6 until the upstream is fixed.
+    "net.ipv6.conf.all.disable_ipv6" = 1;
+    "net.ipv6.conf.default.disable_ipv6" = 1;
   };
 
   # SOPS configuration for this host
