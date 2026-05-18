@@ -5,6 +5,7 @@
   imports = [
     ./hardware.nix
     ./disko.nix
+    ../../modules/services/encrypted-dns.nix
   ];
 
   # Hostname
