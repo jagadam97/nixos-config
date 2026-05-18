@@ -32,7 +32,8 @@ in
 
     listenPort = lib.mkOption {
       type = lib.types.port;
-      default = 5353;
+      # 5353 is mDNS (Avahi), don't use. 53053 is unassigned and clearly DNS-ish.
+      default = 53053;
       description = "Loopback port that dnscrypt-proxy listens on for systemd-resolved to query.";
     };
   };
