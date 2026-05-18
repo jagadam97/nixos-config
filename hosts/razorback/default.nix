@@ -7,6 +7,7 @@
     ./disko.nix
     ../../modules/services/docker.nix
     ../../modules/services/flaresolver.nix
+    ../../modules/services/encrypted-dns.nix
   ];
 
   # Hostname
@@ -51,22 +52,14 @@
   # System state version
   system.stateVersion = "26.05";
 
-  # DNS — primary is our own resolver at razorback.jagadam97.uk (DoT only,
-  # plain DNS disabled upstream). Strict DoT to public resolvers as fallback
-  # when the primary is unreachable. Strict DoT also eliminates UDP packet
-  # loss as a failure mode (was causing intermittent 10s lookup stalls).
-  networking.nameservers = [ "152.70.69.235#razorback.jagadam97.uk" ];
-  services.resolved = {
+  # Encrypted DNS via dnscrypt-proxy → AGH on beast.jagadam97.uk.
+  # ISP interferes with TCP/853 here; dnscrypt-proxy will fail-over to DoH on 443.
+  # AGH labels queries with ClientID "razorback" via the DoH path / DoT SNI.
+  services.encryptedDns = {
     enable = true;
-    settings.Resolve = {
-      DNSOverTLS = "true";
-      FallbackDNS = [
-        "8.8.8.8#dns.google"
-        "1.1.1.1#cloudflare-dns.com"
-        "8.8.4.4#dns.google"
-        "1.0.0.1#cloudflare-dns.com"
-      ];
-    };
+    dohStamp = "sdns://AgcAAAAAAAAADTE1Mi43MC42OS4yMzUAFnJhem9yYmFjay5qYWdhZGFtOTcudWsUL2Rucy1xdWVyeS9yYXpvcmJhY2s";
+    dotStamp = "sdns://AwcAAAAAAAAADTE1Mi43MC42OS4yMzUAFnJhem9yYmFjay5qYWdhZGFtOTcudWs";
+    rawDotFallback = "152.70.69.235#razorback.jagadam97.uk";
   };
 
   # Kernel networking tweaks

@@ -37,12 +37,14 @@
     prefixLength = 24;
   }];
   networking.defaultGateway = "192.168.4.1";
-  networking.nameservers = [
-    "152.70.69.235"  # beast.jagadam97.uk - primary DNS
-    "1.1.1.1"        # Cloudflare fallback
-    "8.8.8.8"        # Google fallback
-  ];
-  services.resolved.enable = true;
+  # Encrypted DNS via dnscrypt-proxy → AGH on beast.jagadam97.uk.
+  # AGH labels queries with ClientID "kayda" via the DoH path / DoT SNI.
+  services.encryptedDns = {
+    enable = true;
+    dohStamp = "sdns://AgcAAAAAAAAADTE1Mi43MC42OS4yMzUAEmtheWRhLmphZ2FkYW05Ny51axAvZG5zLXF1ZXJ5L2theWRh";
+    dotStamp = "sdns://AwcAAAAAAAAADTE1Mi43MC42OS4yMzUAEmtheWRhLmphZ2FkYW05Ny51aw";
+    rawDotFallback = "152.70.69.235#kayda.jagadam97.uk";
+  };
 
   # Firewall
   networking.firewall.enable = false;
