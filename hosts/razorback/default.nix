@@ -51,9 +51,23 @@
   # System state version
   system.stateVersion = "26.05";
 
-  # DNS
-  networking.nameservers = [ "1.1.1.1" "8.8.8.8" ];
-  services.resolved.enable = true;
+  # DNS — primary is our own resolver at razorback.jagadam97.uk (DoT only,
+  # plain DNS disabled upstream). Strict DoT to public resolvers as fallback
+  # when the primary is unreachable. Strict DoT also eliminates UDP packet
+  # loss as a failure mode (was causing intermittent 10s lookup stalls).
+  networking.nameservers = [ "152.70.69.235#razorback.jagadam97.uk" ];
+  services.resolved = {
+    enable = true;
+    settings.Resolve = {
+      DNSOverTLS = "true";
+      FallbackDNS = [
+        "8.8.8.8#dns.google"
+        "1.1.1.1#cloudflare-dns.com"
+        "8.8.4.4#dns.google"
+        "1.0.0.1#cloudflare-dns.com"
+      ];
+    };
+  };
 
   # Kernel networking tweaks
   boot.kernel.sysctl = {
