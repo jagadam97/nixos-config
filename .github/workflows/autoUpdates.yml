@@ -1,0 +1,155 @@
+name: Check for important updates
+
+on:
+  schedule:
+    - cron: '30 23 * * *' # Run daily at 5AM IST (23:30 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Check versions and build if changed
+        id: check-and-build
+        run: |
+          set -u
+
+          # Packages to monitor. Format per line: LABEL|NIX_EVAL_EXPR|BUILD_TARGET
+          #   LABEL          - human-readable name shown in PR
+          #   NIX_EVAL_EXPR  - attribute path whose value is the version string
+          #   BUILD_TARGET   - flake attr to build to validate the update
+          # Example:
+          #   caddy|.#nixosConfigurations.nauvoo.config.services.caddy.package.version|.#nixosConfigurations.nauvoo.config.system.build.toplevel
+          PACKAGES=$(cat <<'EOF'
+          jellyfin|.#nixosConfigurations.kayda.config.services.jellyfin.package.version|.#nixosConfigurations.kayda.config.system.build.toplevel
+          EOF
+          )
+
+          declare -A OLD_VERSIONS
+          declare -A BUILD_TARGETS
+
+          echo "Current versions:"
+          while IFS='|' read -r label expr target; do
+            [ -z "$label" ] && continue
+            VERSION=$(nix eval --raw "$expr" 2>/dev/null || echo 'unknown')
+            OLD_VERSIONS[$label]=$VERSION
+            BUILD_TARGETS[$label]=$target
+            echo "  ${label}: ${VERSION}"
+          done <<< "$PACKAGES"
+
+          echo ""
+          echo "Updating flake inputs..."
+          nix flake update
+
+          declare -A NEW_VERSIONS
+          echo ""
+          echo "New versions:"
+          while IFS='|' read -r label expr target; do
+            [ -z "$label" ] && continue
+            VERSION=$(nix eval --raw "$expr" 2>/dev/null || echo 'unknown')
+            NEW_VERSIONS[$label]=$VERSION
+            echo "  ${label}: ${VERSION}"
+          done <<< "$PACKAGES"
+
+          HAS_CHANGES=false
+          VERSION_CHANGES=""
+          CHANGED_LABELS=()
+
+          for label in "${!OLD_VERSIONS[@]}"; do
+            OLD="${OLD_VERSIONS[$label]}"
+            NEW="${NEW_VERSIONS[$label]}"
+            if [ "$OLD" != "$NEW" ]; then
+              HAS_CHANGES=true
+              CHANGED_LABELS+=("$label")
+              VERSION_CHANGES="${VERSION_CHANGES}- ${label}: ${OLD} -> ${NEW}\n"
+              echo "Changed: ${label} ${OLD} -> ${NEW}"
+            fi
+          done
+
+          echo "has_changes=${HAS_CHANGES}" >> $GITHUB_OUTPUT
+          {
+            echo "version_changes<<EOF"
+            echo -e "$VERSION_CHANGES"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+          if [ "$HAS_CHANGES" != "true" ]; then
+            echo "build_status=0" >> $GITHUB_OUTPUT
+            echo "build_results=No builds needed - no version changes" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo ""
+          echo "Building affected targets..."
+          BUILD_STATUS=0
+          BUILD_RESULTS=""
+          declare -A SEEN_TARGETS
+
+          for label in "${CHANGED_LABELS[@]}"; do
+            target="${BUILD_TARGETS[$label]}"
+            if [ -n "${SEEN_TARGETS[$target]+x}" ]; then
+              continue
+            fi
+            SEEN_TARGETS[$target]=1
+
+            echo "Building ${target} (for ${label})..."
+            if nix build "$target" --no-link 2>&1 | tee "build-${label}.log"; then
+              BUILD_RESULTS="${BUILD_RESULTS}✅ ${label} (${target}): built successfully\n"
+            else
+              BUILD_RESULTS="${BUILD_RESULTS}❌ ${label} (${target}): build failed\n"
+              BUILD_STATUS=1
+            fi
+          done
+
+          echo "build_status=$BUILD_STATUS" >> $GITHUB_OUTPUT
+          {
+            echo "build_results<<EOF"
+            echo -e "$BUILD_RESULTS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Create PR if builds pass
+        if: steps.check-and-build.outputs.has_changes == 'true' && steps.check-and-build.outputs.build_status == '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH="update-flake-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH"
+          git add flake.lock
+          git commit -m "$(printf 'Update flake.lock - new package versions\n\n## Version Changes\n%b\n## Build Results\n%b\nAll builds passed. Safe to merge.' "${{ steps.check-and-build.outputs.version_changes }}" "${{ steps.check-and-build.outputs.build_results }}")"
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+            --title "Update flake.lock - package version updates" \
+            --body "$(printf '## Version Changes\n\n%b\n## Build Results\n\n%b\nAll builds have passed. This PR is safe to merge.' "${{ steps.check-and-build.outputs.version_changes }}" "${{ steps.check-and-build.outputs.build_results }}")"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build failed - notify
+        if: steps.check-and-build.outputs.has_changes == 'true' && steps.check-and-build.outputs.build_status != '0'
+        run: |
+          gh issue create \
+            --title "Build failed after flake update" \
+            --body "$(printf '## Build Failure\n\nThe automated update check found new versions but builds failed.\n\n## Build Results\n\n%b\n## Versions Attempted\n\n%b\nPlease investigate and fix manually.' "${{ steps.check-and-build.outputs.build_results }}" "${{ steps.check-and-build.outputs.version_changes }}")" || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: No version changes
+        if: steps.check-and-build.outputs.has_changes != 'true'
+        run: echo "No package version changes detected. Skipping PR creation."
