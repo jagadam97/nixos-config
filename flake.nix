@@ -23,6 +23,8 @@
 
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
+
+    nixpkgs-jellyfin.url = "github:NixOS/nixpkgs/b3da656039dc7a6240f27b2ef8cc6a3ef3bccae7";
   };
 
   outputs =
@@ -34,6 +36,7 @@
       sops-nix,
       disko,
       nix-index-database,
+      nixpkgs-jellyfin,
       ...
     }@inputs:
     let
@@ -85,6 +88,7 @@
             sops-nix.nixosModules.sops
             disko.nixosModules.disko
             ./hosts/razorback
+            ./overlays/jellyfin-desktop.nix
             ./modules/common
             ./modules/desktop
             ./modules/desktop/kde.nix
@@ -146,6 +150,7 @@
             nix-index-database.darwinModules.nix-index
             sops-nix.darwinModules.sops
             ./hosts/macbook
+            ./overlays/jellyfin-desktop.nix
             home-manager.darwinModules.home-manager
             { programs.nix-index-database.comma.enable = true; }
             {

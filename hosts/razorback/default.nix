@@ -15,7 +15,7 @@
 
   environment.systemPackages = with pkgs; [
     handbrake
-    jellyfin-media-player
+    jellyfin-desktop
     mpv
   ];
 

@@ -120,6 +120,7 @@
     ffmpeg
     tesseract
     sqlite
+    jellyfin-desktop
 
     # Other
     protobuf
