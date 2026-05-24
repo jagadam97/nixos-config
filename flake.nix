@@ -24,7 +24,7 @@
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
-    nixpkgs-jellyfin.url = "github:NixOS/nixpkgs/b3da656039dc7a6240f27b2ef8cc6a3ef3bccae7";
+    nixpkgs-jellyfin.url = "github:NixOS/nixpkgs/4c1018dae018162ec878d42fec712642d214fdfa";
   };
 
   outputs =
