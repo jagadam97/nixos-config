@@ -15,7 +15,7 @@
       }
 
       upstream backend_incus {
-          server 10.10.26.210:22;
+          server 10.10.27.205:22;
       }
 
 
