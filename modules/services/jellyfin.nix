@@ -14,6 +14,11 @@
   # Use jellyfin-ffmpeg for hardware transcoding support
   environment.systemPackages = [ pkgs.jellyfin-ffmpeg ];
 
+  # Automatically wipe out cached transcode chunks older than 4 hours
+  systemd.tmpfiles.rules = [
+    "d /var/cache/jellyfin/transcodes 0700 jellyfin jellyfin 4h"
+  ];
+
   # Ensure jellyfin can access media directories
   users.users.jellyfin = {
     extraGroups = [
