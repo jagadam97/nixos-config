@@ -50,7 +50,7 @@
   time.timeZone = "Asia/Kolkata";
 
   # System state version
-  system.stateVersion = "26.05";
+  system.stateVersion = "26.11";
 
   # Encrypted DNS via dnscrypt-proxy → AGH on beast.jagadam97.uk.
   # ISP interferes with TCP/853 here; dnscrypt-proxy will fail-over to DoH on 443.

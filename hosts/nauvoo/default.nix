@@ -38,7 +38,7 @@
   time.timeZone = "Asia/Kolkata";
 
   # System state version
-  system.stateVersion = "26.05";
+  system.stateVersion = "26.11";
 
   # DNS
   networking.nameservers = [ "1.1.1.1" "8.8.8.8" ];

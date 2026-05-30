@@ -58,7 +58,7 @@
   # nix.settings.extra-platforms = lib.mkForce [];
 
   # System state version
-  system.stateVersion = "26.05";
+  system.stateVersion = "26.11";
 
   # SOPS configuration for this host
   sops.defaultSopsFile = ./secrets.yaml;
