@@ -67,6 +67,7 @@ in
 
     # Terminal / GUI
     alacritty
+    ghostty
     zed-editor
 
     # Dev workflow
