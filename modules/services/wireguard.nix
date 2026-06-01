@@ -11,7 +11,6 @@
 
   networking.wg-quick.interfaces.wg0 = {
     address = [ "10.10.10.4/24" ];
-    listenPort = 51820;
     mtu = 1400;
     privateKeyFile = config.sops.secrets.wg_private_key.path;
     table = "off";
