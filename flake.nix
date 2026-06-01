@@ -22,7 +22,7 @@
     };
 
     nix-index-database.url = "github:nix-community/nix-index-database";
-    nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
+    # nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
     nixpkgs-jellyfin.url = "github:NixOS/nixpkgs/4c1018dae018162ec878d42fec712642d214fdfa";
   };
