@@ -1,6 +1,7 @@
 # Auto-update NixOS config from private GitHub repo
 # - Clones repo to /var/lib/nixos-config if not present
 # - Runs every 5 minutes, checks for new commits on main
+# - Waits for host-specific CI job to pass before rebuilding (Cachix hits)
 # - If changes detected, runs nixos-rebuild switch
 {
   config,
