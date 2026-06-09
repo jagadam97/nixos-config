@@ -87,14 +87,11 @@ let
 
     trap - ERR
     github_status success "nixos-rebuild succeeded on $FLAKE_TARGET"
-    echo "[nixos-autoupdate] Rebuild complete."
-  '';
-
-  notifySuccessScript = pkgs.writeShellScript "nixos-autoupdate-notify-success" ''
     ${pkgs.curl}/bin/curl -s -X POST "${discordWebhook}" \
       -H "Content-Type: application/json" \
-      -d "{\"embeds\":[{\"title\":\"NixOS Autoupdate Success\",\"description\":\"Host: \`${hostname}\`\\nConfig updated and rebuilt successfully.\",\"color\":3066993}]}" \
+      -d "{\"embeds\":[{\"title\":\"NixOS Autoupdate Success\",\"description\":\"Host: \`$FLAKE_TARGET\`\\nConfig updated and rebuilt successfully.\",\"color\":3066993}]}" \
       || true
+    echo "[nixos-autoupdate] Rebuild complete."
   '';
 
   notifyFailureScript = pkgs.writeShellScript "nixos-autoupdate-notify-failure" ''
@@ -134,7 +131,6 @@ in
     description = "Check and apply NixOS config updates from GitHub";
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
-    onSuccess = [ "nixos-autoupdate-notify-success.service" ];
     onFailure = [ "nixos-autoupdate-notify-failure.service" ];
 
     serviceConfig = {
@@ -145,15 +141,6 @@ in
       StandardOutput = "journal";
       StandardError = "journal";
       TimeoutStartSec = "infinity";
-    };
-  };
-
-  systemd.services.nixos-autoupdate-notify-success = {
-    description = "Discord success notification for nixos-autoupdate";
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root";
-      ExecStart = notifySuccessScript;
     };
   };
 
