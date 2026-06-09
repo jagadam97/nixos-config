@@ -155,6 +155,9 @@ in
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
     onFailure = [ "nixos-autoupdate-notify-failure.service" ];
+    # Don't restart this service during nixos-rebuild switch — it would
+    # SIGTERM the very rebuild process that triggered the activation.
+    restartIfChanged = false;
 
     serviceConfig = {
       Type = "oneshot";
