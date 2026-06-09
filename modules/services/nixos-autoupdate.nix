@@ -2,7 +2,6 @@
 # - Clones repo to /var/lib/nixos-config if not present
 # - Runs every 5 minutes, checks for new commits on main
 # - If changes detected, runs nixos-rebuild switch
-# - Logs to journald (journalctl -u nixos-autoupdate)
 {
   config,
   pkgs,
