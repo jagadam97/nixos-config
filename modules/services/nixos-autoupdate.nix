@@ -16,6 +16,7 @@ let
   sshKey = "/root/.ssh/id_ed25519";
   hostname = config.networking.hostName;
   discordWebhook = config.services.nixos-autoupdate.discordWebhookUrl;
+  githubTokenFile = config.sops.secrets.github_token.path;
 
   # Wrapper so GIT_SSH_COMMAND has no spaces (systemd Environment= limitation)
   gitSshWrapper = pkgs.writeShellScript "git-ssh-wrapper" ''
@@ -33,18 +34,20 @@ let
     REPO="${repoDir}"
     REMOTE="${repoUrl}"
     FLAKE_TARGET="${hostname}"
-    DISCORD_WEBHOOK="${discordWebhook}"
+    GITHUB_TOKEN=$(cat "${githubTokenFile}")
+    GITHUB_REPO="jagadam97/nixos-config"
+    REMOTE_SHA=""
 
-    discord_notify() {
-      local color="$1"
-      local title="$2"
-      local message="$3"
-      if [ -n "$DISCORD_WEBHOOK" ]; then
-        ${pkgs.curl}/bin/curl -s -X POST "$DISCORD_WEBHOOK" \
-          -H "Content-Type: application/json" \
-          -d "{\"embeds\":[{\"title\":\"$title\",\"description\":\"$message\",\"color\":$color}]}" \
-          || true
-      fi
+    github_status() {
+      local state="$1"
+      local description="$2"
+      [ -z "$REMOTE_SHA" ] && return 0
+      ${pkgs.curl}/bin/curl -s -X POST \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Accept: application/vnd.github.v3+json" \
+        "https://api.github.com/repos/$GITHUB_REPO/statuses/$REMOTE_SHA" \
+        -d "{\"state\":\"$state\",\"description\":\"$description\",\"context\":\"nixos-autoupdate/$FLAKE_TARGET\"}" \
+        || true
     }
 
     echo "[nixos-autoupdate] Starting check at $(date)"
@@ -56,7 +59,6 @@ let
       echo "[nixos-autoupdate] Clone complete, triggering initial build..."
       ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$REPO#$FLAKE_TARGET"
       echo "[nixos-autoupdate] Initial build done."
-      discord_notify 3066993 "NixOS Autoupdate Success" "Host: \`$FLAKE_TARGET\`\nInitial build applied successfully."
       exit 0
     fi
 
@@ -77,20 +79,30 @@ let
     # Force-reset to remote state (handles amends, rebases, force-pushes)
     ${pkgs.git}/bin/git reset --hard origin/main
 
-    echo "[nixos-autoupdate] Running nixos-rebuild switch..."
-    set +e
-    ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$REPO#$FLAKE_TARGET"
-    REBUILD_EXIT=$?
-    set -e
+    github_status pending "nixos-rebuild running on $FLAKE_TARGET"
 
-    if [ $REBUILD_EXIT -eq 0 ]; then
-      echo "[nixos-autoupdate] Rebuild complete."
-      discord_notify 3066993 "NixOS Autoupdate Success" "Host: \`$FLAKE_TARGET\`\nUpdated \`''${LOCAL:0:7}\` → \`''${REMOTE_SHA:0:7}\` and rebuilt successfully."
-    else
-      echo "[nixos-autoupdate] Rebuild FAILED (exit code $REBUILD_EXIT)."
-      discord_notify 15158332 "NixOS Autoupdate Failed" "Host: \`$FLAKE_TARGET\`\n\`nixos-rebuild switch\` exited with code \`$REBUILD_EXIT\`\nCommit: \`''${REMOTE_SHA:0:7}\`\nCheck: \`journalctl -u nixos-autoupdate\`"
-      exit $REBUILD_EXIT
-    fi
+    trap 'github_status failure "nixos-rebuild failed — check journalctl -u nixos-autoupdate"' ERR
+
+    echo "[nixos-autoupdate] Running nixos-rebuild switch..."
+    ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$REPO#$FLAKE_TARGET"
+
+    trap - ERR
+    github_status success "nixos-rebuild succeeded on $FLAKE_TARGET"
+    echo "[nixos-autoupdate] Rebuild complete."
+  '';
+
+  notifySuccessScript = pkgs.writeShellScript "nixos-autoupdate-notify-success" ''
+    ${pkgs.curl}/bin/curl -s -X POST "${discordWebhook}" \
+      -H "Content-Type: application/json" \
+      -d "{\"embeds\":[{\"title\":\"NixOS Autoupdate Success\",\"description\":\"Host: \`${hostname}\`\\nConfig updated and rebuilt successfully.\",\"color\":3066993}]}" \
+      || true
+  '';
+
+  notifyFailureScript = pkgs.writeShellScript "nixos-autoupdate-notify-failure" ''
+    ${pkgs.curl}/bin/curl -s -X POST "${discordWebhook}" \
+      -H "Content-Type: application/json" \
+      -d "{\"embeds\":[{\"title\":\"NixOS Autoupdate Failed\",\"description\":\"Host: \`${hostname}\`\\n\`nixos-rebuild switch\` failed.\\nCheck: \`journalctl -u nixos-autoupdate\`\",\"color\":15158332}]}" \
+      || true
   '';
 in
 {
@@ -101,6 +113,10 @@ in
   };
 
   config = {
+  sops.secrets.github_token = {
+    owner = "root";
+  };
+
   # Ensure repo dir and root .ssh dir exist
   systemd.tmpfiles.rules = [
     "d ${repoDir} 0755 root root -"
@@ -119,6 +135,8 @@ in
     description = "Check and apply NixOS config updates from GitHub";
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
+    onSuccess = [ "nixos-autoupdate-notify-success.service" ];
+    onFailure = [ "nixos-autoupdate-notify-failure.service" ];
 
     serviceConfig = {
       Type = "oneshot";
@@ -127,6 +145,25 @@ in
       Environment = [ "HOME=/root" ];
       StandardOutput = "journal";
       StandardError = "journal";
+      TimeoutStartSec = "infinity";
+    };
+  };
+
+  systemd.services.nixos-autoupdate-notify-success = {
+    description = "Discord success notification for nixos-autoupdate";
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+      ExecStart = notifySuccessScript;
+    };
+  };
+
+  systemd.services.nixos-autoupdate-notify-failure = {
+    description = "Discord failure notification for nixos-autoupdate";
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+      ExecStart = notifyFailureScript;
     };
   };
 
