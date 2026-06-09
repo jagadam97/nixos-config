@@ -7,6 +7,7 @@
     enable = true;
     onActivation.autoUpdate = true;
     onActivation.cleanup = "zap";
+    onActivation.extraFlags = [ "--force" ];
     onActivation.upgrade = true;
 
     taps = [
