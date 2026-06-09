@@ -78,6 +78,29 @@ let
     # Force-reset to remote state (handles amends, rebases, force-pushes)
     ${pkgs.git}/bin/git reset --hard origin/main
 
+    # Wait for CI to finish so Cachix has pre-built derivations
+    echo "[nixos-autoupdate] Waiting for CI on $REMOTE_SHA..."
+    for i in $(seq 1 60); do
+      CI_STATE=$(${pkgs.curl}/bin/curl -s \
+        -H "Authorization: token $GITHUB_TOKEN" \
+        -H "Accept: application/vnd.github.v3+json" \
+        "https://api.github.com/repos/$GITHUB_REPO/commits/$REMOTE_SHA/check-runs" \
+        | ${pkgs.jq}/bin/jq -r --arg host "$FLAKE_TARGET" '
+          [.check_runs[] | select(.name == "build-nixos (\($host))")]
+          | if length == 0 then "pending"
+            elif .[0].conclusion == "success" then "success"
+            elif (.[0].conclusion == "failure" or .[0].conclusion == "cancelled") then "failure"
+            else "pending"
+            end')
+      echo "[nixos-autoupdate] CI state: $CI_STATE (attempt $i/60)"
+      [ "$CI_STATE" = "success" ] && break
+      if [ "$CI_STATE" = "failure" ]; then
+        echo "[nixos-autoupdate] CI failed — building anyway (may not use cache)"
+        break
+      fi
+      sleep 30
+    done
+
     github_status pending "nixos-rebuild running on $FLAKE_TARGET"
 
     trap 'github_status failure "nixos-rebuild failed — check journalctl -u nixos-autoupdate"' ERR
