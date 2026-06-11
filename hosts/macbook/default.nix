@@ -11,6 +11,7 @@
   imports = [
     ./gui-apps.nix
     ./admin.nix
+    ./remote-builder.nix
   ];
 
   # Allow unfree packages
