@@ -66,6 +66,7 @@
             ./modules/services/nix-ld.nix
             ./modules/services/nginx.nix # Uncomment to enable TCP/UDP stream proxy
             ./modules/services/nixos-autoupdate.nix
+            ./modules/services/attic.nix
             nix-index-database.nixosModules.default
             { programs.nix-index-database.comma.enable = true; }
 
