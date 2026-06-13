@@ -1,9 +1,6 @@
 { config, ... }:
 {
-  sops.secrets.attic_token = {
-    owner = "atticd";
-    group = "atticd";
-  };
+  sops.secrets.attic_token = { };
 
   services.atticd = {
     enable = true;
