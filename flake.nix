@@ -120,7 +120,7 @@
             ./hosts/kayda
             ./modules/common
             ./modules/nvidia
-            ./modules/dashboard
+            # ./modules/dashboard
             ./modules/services/disable-suspend.nix
             ./modules/services/nixos-autoupdate.nix
             ./modules/services/nfs-mounts.nix
