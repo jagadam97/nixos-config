@@ -10,16 +10,33 @@
   
   systemd.services.flaresolverr = {
     serviceConfig = {
+      # Lifecycle
       Restart = lib.mkForce "on-failure";
       RestartSec = lib.mkForce 5;
+      TimeoutStopSec = "20s";
+
+      # Environment Setup
       Environment = [
         "LOG_LEVEL=info"
-        "MAX_BROWSER_INSTANCES=4"
-        "TZ=Asia/kolkata"
+        "LOG_HTML=false"
+        "MAX_BROWSER_INSTANCES=2"
+        "TZ=Asia/Kolkata"
+        "BROWSER_TIMEOUT=90000"
       ];
+
+      # Resource Control
       MemoryMax = "4G";
       MemoryHigh = "3.5G";
+      MemorySwapMax = "0";
       CPUQuota = "400%";
+
+      # System Hardening Sandbox
+      DynamicUser = true;
+      PrivateTmp = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      NoNewPrivileges = true;
+      CapabilityBoundingSet = "";
     };
   };
 }

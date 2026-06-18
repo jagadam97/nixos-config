@@ -127,6 +127,7 @@
             ./modules/services/jellyfin.nix
             ./modules/services/telegraf.nix
             ./modules/services/cachix.nix
+            ./modules/services/flaresolver.nix
             nix-index-database.nixosModules.default
             { programs.nix-index-database.comma.enable = true; }
 
