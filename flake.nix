@@ -128,6 +128,7 @@
             ./modules/services/telegraf.nix
             ./modules/services/cachix.nix
             ./modules/services/flaresolver.nix
+            ./modules/services/byparr.nix
             nix-index-database.nixosModules.default
             { programs.nix-index-database.comma.enable = true; }
 
