@@ -13,7 +13,6 @@
       # Lifecycle
       Restart = lib.mkForce "on-failure";
       RestartSec = lib.mkForce 5;
-      TimeoutStopSec = "20s";
 
       # Environment Setup
       Environment = [
