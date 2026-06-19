@@ -38,6 +38,20 @@
   # Enable binfmt emulation for aarch64-linux builds
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 
+  # Never sleep/suspend/hibernate — this box runs long jobs (scrapes, builds)
+  # and acts as a server. Masking the targets makes any suspend attempt fail,
+  # and IdleAction=ignore stops logind from auto-suspending on inactivity.
+  systemd.targets.sleep.enable = false;
+  systemd.targets.suspend.enable = false;
+  systemd.targets.hibernate.enable = false;
+  systemd.targets.hybrid-sleep.enable = false;
+  services.logind.settings.Login = {
+    IdleAction = "ignore";
+    HandleSuspendKey = "ignore";
+    HandleHibernateKey = "ignore";
+    HandleLidSwitch = "ignore";
+  };
+
   # Networking
   networking.networkmanager.enable = true;
   networking.firewall.enable = false;
