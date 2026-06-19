@@ -38,6 +38,13 @@
   # Enable binfmt emulation for aarch64-linux builds
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 
+  # Thunderbolt KVM/dock fix: the kernel resets the TB host controller at boot
+  # (thunderbolt.host_reset defaults to Y on 7.x), which wedges the dock's USB
+  # xHCI controller — keyboard/mouse stay dead until the cable is replugged.
+  # Disabling the reset lets the USB devices enumerate normally at boot.
+  boot.kernelParams = [ "thunderbolt.host_reset=0" ];
+  boot.extraModprobeConfig = "options thunderbolt host_reset=0";
+
   # Never sleep/suspend/hibernate — this box runs long jobs (scrapes, builds)
   # and acts as a server. Masking the targets makes any suspend attempt fail,
   # and IdleAction=ignore stops logind from auto-suspending on inactivity.
