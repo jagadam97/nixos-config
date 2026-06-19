@@ -2,7 +2,7 @@
 { inputs, ... }: {
   nixpkgs.overlays = [
     (final: prev: {
-      jellyfin-desktop = inputs.nixpkgs-jellyfin.legacyPackages.${prev.system}.jellyfin-desktop;
+      jellyfin-desktop = inputs.nixpkgs-jellyfin.legacyPackages.${prev.stdenv.hostPlatform.system}.jellyfin-desktop;
     })
   ];
 }

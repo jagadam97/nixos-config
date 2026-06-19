@@ -5,7 +5,7 @@ let
 in
 {
   options.services.encryptedDns = {
-    enable = lib.mkEnableOption "encrypted DNS via dnscrypt-proxy2 (DoH + DoT to AGH on beast)";
+    enable = lib.mkEnableOption "encrypted DNS via dnscrypt-proxy (DoH + DoT to AGH on beast)";
 
     dohStamp = lib.mkOption {
       type = lib.types.str;
@@ -39,7 +39,7 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    services.dnscrypt-proxy2 = {
+    services.dnscrypt-proxy = {
       enable = true;
       settings = {
         listen_addresses = [ "127.0.0.1:${toString cfg.listenPort}" ];
