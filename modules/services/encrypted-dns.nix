@@ -39,6 +39,19 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # Break the boot-time deadlock between encrypted DNS and the clock: DoH
+    # validates its TLS cert against the system time, but if the RTC is wrong
+    # at boot the clock can't be corrected when timesyncd's NTP servers are
+    # *hostnames* — DNS is down precisely because DoH is failing. IP-literal
+    # NTP servers let time sync without DNS; once the clock is right, DoH/DNS
+    # recover on their own. (Hit on kayda 2026-06-20: RTC came up at 2010.)
+    networking.timeServers = lib.mkDefault [
+      "162.159.200.1"    # time.cloudflare.com (anycast)
+      "162.159.200.123"  # time.cloudflare.com (anycast)
+      "216.239.35.0"     # time.google.com
+      "216.239.35.4"     # time.google.com
+    ];
+
     services.dnscrypt-proxy = {
       enable = true;
       settings = {
