@@ -17,9 +17,11 @@
     brews = [
       # CLI tools that might not be in nixpkgs or you prefer from brew
       # Most CLI tools are migrated to Nix, add any remaining ones here
+      "gitleaks"
     ];
 
     casks = [
+      "bambu-studio"
       "bitwarden"
       "brave-browser"
       "font-fira-code"
