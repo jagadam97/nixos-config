@@ -52,6 +52,7 @@
             sops-nix.nixosModules.sops
             disko.nixosModules.disko
             ./hosts/nauvoo
+            ./overlays/nomad.nix
             ./modules/common
             ./modules/desktop
             ./modules/desktop/gnome.nix
