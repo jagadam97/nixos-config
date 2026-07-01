@@ -28,6 +28,7 @@
       "font-powerline-symbols"
       "iterm2"
       "notion-calendar"
+      "notion"
       "postman"
       "rectangle"
       "slack"
