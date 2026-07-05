@@ -198,8 +198,28 @@
     baseIndex = 1;
     escapeTime = 0;
     keyMode = "vi";
+    prefix = "C-a";
+    terminal = "tmux-256color";
+    historyLimit = 50000;
 
     plugins = with pkgs.tmuxPlugins; [
+      sensible
+      vim-tmux-navigator
+      yank
+      {
+        plugin = resurrect;
+        extraConfig = ''
+          set -g @resurrect-strategy-nvim "session"
+          set -g @resurrect-capture-pane-contents "on"
+        '';
+      }
+      {
+        plugin = continuum;
+        extraConfig = ''
+          set -g @continuum-restore "on"
+          set -g @continuum-save-interval "10"
+        '';
+      }
       {
         plugin = minimal-tmux-status;
         extraConfig = ''
@@ -211,19 +231,33 @@
     ];
 
     extraConfig = ''
-      # --- Zellij-style "Hint Bar" ---
-      # Enable a second status line
-      set -g status 2
+      # Truecolor
+      set -ga terminal-overrides ",*256col*:Tc"
 
-      # Style for the second line (the hints)
-      set -g 'status-format[1]' '#[bg=default,fg=white]   #[fg=green]C-b p #[fg=white]Pane  #[fg=blue]C-b t #[fg=white]Tab  #[fg=magenta]C-b s #[fg=white]Search  #[fg=yellow]C-b d #[fg=white]Detach  #[fg=cyan]C-b ? #[fg=white]Help'
-
-      # Toggle the hint bar with 'h'
-      bind-key h if -F '#{==:#{status},2}' 'set -g status on' 'set -g status 2'
+      # Renumber windows when one closes
+      set -g renumber-windows on
 
       # Add thin pane borders similar to Zellij frames
       set -g pane-border-style fg='#444444'
-      set -g pane-active-border-style fg='#698DDA'
+      set -g pane-active-border-style fg='#258AAA'
+
+      # Splits open in current path, intuitive keys
+      bind | split-window -h -c "#{pane_current_path}"
+      bind - split-window -v -c "#{pane_current_path}"
+      bind c new-window -c "#{pane_current_path}"
+
+      # Vi-style copy mode selection
+      bind -T copy-mode-vi v send-keys -X begin-selection
+      bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
+
+      # Quick config reload
+      bind r source-file ~/.config/tmux/tmux.conf \; display "Config reloaded"
+
+      # Resize panes with prefix + HJKL
+      bind -r H resize-pane -L 5
+      bind -r J resize-pane -D 5
+      bind -r K resize-pane -U 5
+      bind -r L resize-pane -R 5
     '';
   };
   # Environment variables

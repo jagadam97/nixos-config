@@ -70,8 +70,6 @@
     # Container Tools
     docker
     docker-compose
-    podman
-    podman-compose
 
     # Database Clients
     mariadb.client
