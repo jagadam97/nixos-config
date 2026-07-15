@@ -7,5 +7,6 @@
     ./users.nix
     ./nix-settings.nix
     ./ssh.nix
+    ./journald.nix
   ];
 }
