@@ -18,9 +18,20 @@ let
   discordWebhook = config.services.nixos-autoupdate.discordWebhookUrl;
   githubTokenFile = config.sops.secrets.github_token.path;
 
+  # Route github.com over ssh.github.com:443 — port 22 is blocked on some
+  # networks (corporate/cafe wifi). Still plain SSH with the same key; only
+  # the port changes. GitHub serves SSH on 443 for exactly this case.
+  sshConfig = pkgs.writeText "nixos-autoupdate-ssh-config" ''
+    Host github.com
+      HostName ssh.github.com
+      Port 443
+      User git
+  '';
+
   # Wrapper so GIT_SSH_COMMAND has no spaces (systemd Environment= limitation)
   gitSshWrapper = pkgs.writeShellScript "git-ssh-wrapper" ''
     exec ${pkgs.openssh}/bin/ssh \
+      -F ${sshConfig} \
       -i ${sshKey} \
       -o StrictHostKeyChecking=accept-new \
       -o UserKnownHostsFile=/root/.ssh/known_hosts \
@@ -87,12 +98,12 @@ let
         -H "Accept: application/vnd.github.v3+json" \
         "https://api.github.com/repos/$GITHUB_REPO/commits/$REMOTE_SHA/check-runs" \
         | ${pkgs.jq}/bin/jq -r --arg host "$FLAKE_TARGET" '
-          [.check_runs[] | select(.name == "build-nixos (\($host))")]
+          [(.check_runs // [])[] | select(.name == "build-nixos (\($host))")]
           | if length == 0 then "pending"
             elif .[0].conclusion == "success" then "success"
             elif (.[0].conclusion == "failure" or .[0].conclusion == "cancelled") then "failure"
             else "pending"
-            end')
+            end' 2>/dev/null || echo "pending")
       echo "[nixos-autoupdate] CI state: $CI_STATE (attempt $i/60)"
       [ "$CI_STATE" = "success" ] && break
       if [ "$CI_STATE" = "failure" ]; then
