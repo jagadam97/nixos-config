@@ -46,9 +46,9 @@ in
     options = commonOpts;
   };
 
-  fileSystems."/mnt/hd4001" = {
-    device = "192.168.4.240:/mnt/pve/hd4001";
-    fsType = "nfs";
-    options = commonOpts;
-  };
+  # fileSystems."/mnt/hd4001" = {
+  # device = "192.168.4.240:/mnt/pve/hd4001";
+  # fsType = "nfs";
+  # options = commonOpts;
+  # };
 }
