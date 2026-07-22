@@ -73,9 +73,15 @@ let
       exit 0
     fi
 
-    # Fetch latest from origin (force-reset to handle amended/rebased commits)
+    # Fetch latest from origin (force-reset to handle amended/rebased commits).
+    # A network blip (github unreachable, even over 443) is not a real
+    # failure — skip this run and let the 5-min timer retry, rather than
+    # hard-failing and firing the OnFailure Discord alert.
     cd "$REPO"
-    ${pkgs.git}/bin/git fetch origin main 2>&1
+    if ! ${pkgs.git}/bin/git fetch origin main 2>&1; then
+      echo "[nixos-autoupdate] git fetch failed (github unreachable?) — skipping, will retry next tick"
+      exit 0
+    fi
 
     LOCAL=$(${pkgs.git}/bin/git rev-parse HEAD)
     REMOTE_SHA=$(${pkgs.git}/bin/git rev-parse origin/main)
