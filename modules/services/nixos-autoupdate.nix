@@ -99,11 +99,21 @@ let
     # Wait for CI to finish so Cachix has pre-built derivations
     echo "[nixos-autoupdate] Waiting for CI on $REMOTE_SHA..."
     for i in $(seq 1 60); do
-      CI_STATE=$(${pkgs.curl}/bin/curl -s \
+      RESPONSE=$(${pkgs.curl}/bin/curl -s \
         -H "Authorization: token $GITHUB_TOKEN" \
         -H "Accept: application/vnd.github.v3+json" \
-        "https://api.github.com/repos/$GITHUB_REPO/commits/$REMOTE_SHA/check-runs" \
-        | ${pkgs.jq}/bin/jq -r --arg host "$FLAKE_TARGET" '
+        "https://api.github.com/repos/$GITHUB_REPO/commits/$REMOTE_SHA/check-runs" || echo "")
+
+      # An error response (bad token, rate limit, 404) has a .message and no
+      # .check_runs. Don't mask it as "pending" and silently wait 30 min —
+      # surface it and build anyway (cache may miss, but the config still applies).
+      API_ERROR=$(printf '%s' "$RESPONSE" | ${pkgs.jq}/bin/jq -r 'if (.check_runs == null) and (.message != null) then .message else empty end' 2>/dev/null || echo "")
+      if [ -n "$API_ERROR" ]; then
+        echo "[nixos-autoupdate] check-runs API error: $API_ERROR — skipping CI gate, building anyway"
+        break
+      fi
+
+      CI_STATE=$(printf '%s' "$RESPONSE" | ${pkgs.jq}/bin/jq -r --arg host "$FLAKE_TARGET" '
           [(.check_runs // [])[] | select(.name == "build-nixos (\($host))")]
           | if length == 0 then "pending"
             elif .[0].conclusion == "success" then "success"
