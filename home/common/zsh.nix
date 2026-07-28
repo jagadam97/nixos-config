@@ -25,7 +25,6 @@
         "docker"
         "cabal"
         "golang"
-        "gradle"
         "man"
         "node"
         "npm"

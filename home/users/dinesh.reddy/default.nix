@@ -37,6 +37,21 @@
       ];
       theme = "robbyrussell";
     };
+
+    history = {
+      size = 100000;
+      save = 100000;
+      ignoreDups = true;
+      ignoreSpace = true;
+      expireDuplicatesFirst = true;
+      share = true;
+      extended = true;
+    };
+
+    shellAliases = {
+      # zoxide-backed cd so every jump trains the database
+      cd = "z";
+    };
     initContent = ''
       export PATH="/etc/profiles/per-user/dinesh.reddy/bin:$PATH"
 
@@ -77,11 +92,7 @@
         fi
       ''}
 
-      # Starship prompt
-      eval "$(starship init zsh)"
-
-      # zoxide
-      eval "$(zoxide init zsh)"
+      # starship, zoxide and direnv init come from their home-manager modules
 
       # Add homebrew to PATH
       if [ -d /opt/homebrew ]; then
@@ -132,8 +143,9 @@
   # Starship configuration
   programs.starship = {
     enable = true;
+    enableZshIntegration = true;
     settings = {
-      format = "$directory$git_branch$git_state$git_status$character";
+      format = "$directory$git_branch$git_state$git_status$nix_shell$character";
       right_format = "$cmd_duration$time";
       character = {
         success_symbol = "[➜](bold green)";
@@ -143,8 +155,41 @@
         truncation_length = 3;
         truncate_to_repo = false;
       };
+      # Shown whenever a nix dev shell is active (direnv/nix-direnv sets IN_NIX_SHELL)
+      nix_shell = {
+        disabled = false;
+        format = "[$symbol$state( \\($name\\))]($style) ";
+        symbol = "❄️ ";
+        style = "bold blue";
+        impure_msg = "impure";
+        pure_msg = "pure";
+        unknown_msg = "nix";
+        heuristic = true;
+      };
     };
   };
+
+  # zoxide - `z <dir>` jump, `zi` interactive pick
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  # direnv + nix-direnv - auto-load flake dev shells per directory
+  programs.direnv = {
+    enable = true;
+    enableZshIntegration = true;
+    nix-direnv.enable = true;
+    config.global = {
+      # nix-direnv exports a lot; the per-cd env diff is pure noise
+      hide_env_diff = true;
+      # first flake eval in a repo legitimately takes a while
+      warn_timeout = "30s";
+    };
+  };
+
+  # Weekly direnv cache/gcroot pruning lives in hosts/macbook/admin.nix
+  # (launchd daemon "direnv-prune", runs as this user)
 
   # Git configuration
   programs.git = {

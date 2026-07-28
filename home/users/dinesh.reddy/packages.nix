@@ -25,10 +25,8 @@
     tmux
     ncdu
     nano
-    direnv
     pay-respects
-    starship
-    zoxide
+    # direnv, starship and zoxide come from their home-manager modules
 
     # From home/common/packages.nix
     go
