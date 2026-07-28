@@ -209,6 +209,30 @@
     vim = "nvim";
   };
 
+  # Emacs binary for Doom. macport build = native macOS window system + titlebar,
+  # aarch64-darwin only (this file is macbook-specific anyway).
+  programs.emacs = {
+    enable = true;
+    package = pkgs.emacs30-macport;
+  };
+
+  # Doom Emacs: ~/.config/emacs is the doom checkout (imperative, like nvim's
+  # chezmoi-owned config); ~/.config/doom holds init.el/config.el/packages.el.
+  home.sessionPath = [ "${config.home.homeDirectory}/.config/emacs/bin" ];
+
+  home.activation.doomEmacsBootstrap = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    doomRepo="${config.home.homeDirectory}/.config/emacs"
+    if [ ! -e "$doomRepo" ]; then
+      # Network failure must not abort the whole rebuild
+      if run ${pkgs.git}/bin/git clone --depth 1 \
+           https://github.com/doomemacs/doomemacs "$doomRepo"; then
+        echo "doom cloned to $doomRepo - finish with: ~/.config/emacs/bin/doom install"
+      else
+        echo "warning: doom clone failed; rerun activation or clone by hand" >&2
+      fi
+    fi
+  '';
+
   # Fzf configuration
   programs.fzf = {
     enable = true;
@@ -311,5 +335,8 @@
     PAGER = "less";
     LESS = "-R";
 
+    # Doom looks these up; set explicitly so `doom` works from any shell
+    EMACSDIR = "${config.home.homeDirectory}/.config/emacs";
+    DOOMDIR = "${config.home.homeDirectory}/.config/doom";
   };
 }

@@ -109,6 +109,15 @@
     # Documentation
     pandoc
 
+    # Doom Emacs module deps (emacs itself comes from programs.emacs)
+    shellcheck # :lang sh
+    shfmt # :lang sh
+    imagemagick # image-dired, org image scaling
+    graphviz # :lang org roam graphs
+    aspell # :checkers spell
+    aspellDicts.en
+    aspellDicts.en-computers
+
     # Encryption
     gnupg
 
