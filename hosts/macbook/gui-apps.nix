@@ -21,7 +21,6 @@
     ];
 
     casks = [
-      "bambu-studio"
       "bitwarden"
       "brave-browser"
       "font-fira-code"
