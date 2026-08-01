@@ -126,6 +126,7 @@
             ./modules/services/nfs-mounts.nix
             ./modules/services/jellyfin.nix
             ./modules/services/telegraf.nix
+            ./modules/services/vector.nix
             ./modules/services/cachix.nix
             ./modules/services/flaresolver.nix
             ./modules/services/byparr.nix
