@@ -18,32 +18,42 @@ let
   logLineRegex = ''^(?P<ts>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?)\|(?P<level>[^|]+)\|(?P<logger>[^|]+)\|(?P<msg>[\s\S]*)$'';
 in
 {
-  # Axiom API token. Stored raw in secrets.yaml; wrapped in an env file so
-  # Vector can interpolate ${AXIOM_TOKEN} from its config.
-  sops.secrets.axiom_api_key = { };
-  sops.templates."axiom.env" = {
-    content = "AXIOM_TOKEN=${config.sops.placeholder.axiom_api_key}";
+  # Axiom API token, read through Vector's own secrets backend.
+  #
+  # Do NOT switch this to a "${AXIOM_TOKEN}" env var: Vector 0.57 does not
+  # interpolate env vars into sink options, and rather than failing it ships
+  # the literal string as the bearer token, which Axiom rejects with
+  # {"code":401,"message":"token not supported"}.
+  sops.secrets.axiom_api_key = {
     owner = "vector";
     group = "vector";
     mode = "0400";
   };
 
   # The upstream module runs Vector under DynamicUser, which cannot own a sops
-  # secret. Use a fixed user instead.
+  # secret. Use a fixed user instead. The keys group grants access to /run/secrets.
   users.users.vector = {
     isSystemUser = true;
     group = "vector";
+    extraGroups = [ "keys" ];
   };
   users.groups.vector = { };
 
   services.vector = {
     enable = true;
     journaldAccess = true;
-    # The config references ${AXIOM_TOKEN}, which build-time validation cannot resolve.
+    # Validation would try to resolve SECRET[...] against /run/secrets, which
+    # does not exist in the build sandbox.
     validateConfig = false;
 
     settings = {
       data_dir = "/var/lib/vector";
+
+      # Resolves SECRET[sops.<key>] placeholders against sops-nix's output dir.
+      secret.sops = {
+        type = "directory";
+        path = "/run/secrets";
+      };
 
       sources = {
         jellyfin = {
@@ -117,7 +127,7 @@ in
         type = "axiom";
         inputs = [ "drop_noise" ];
         dataset = "application-logs";
-        token = "\${AXIOM_TOKEN}";
+        token = "SECRET[sops.axiom_api_key]";
         compression = "gzip";
         batch.timeout_secs = 10;
         # Ride out Axiom/network outages without buffering in RAM.
@@ -137,8 +147,7 @@ in
       DynamicUser = lib.mkForce false;
       User = "vector";
       Group = "vector";
-      SupplementaryGroups = lib.mkForce [ "systemd-journal" ];
-      EnvironmentFile = config.sops.templates."axiom.env".path;
+      SupplementaryGroups = lib.mkForce [ "systemd-journal" "keys" ];
     };
   };
 }
