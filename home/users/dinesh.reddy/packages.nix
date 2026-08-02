@@ -105,6 +105,7 @@
 
     # Terminal Multiplexer
     tmux
+    herdr
 
     # Documentation
     pandoc
