@@ -29,6 +29,7 @@
       "notion-calendar"
       "notion"
       "postman"
+      "raycast"
       "rectangle"
       "slack"
       "spotify"
