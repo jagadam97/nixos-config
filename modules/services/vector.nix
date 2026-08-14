@@ -90,7 +90,7 @@ in
           source = ''
             # /mnt/bx500/maintainarr/<app>/... -> <app>
             .app = split(string!(.file), "/")[4]
-            .host = "kayda"
+            .host = "maintainarr"
 
             parsed, err = parse_regex(.message, r'${logLineRegex}')
             if err == null {
