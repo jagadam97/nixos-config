@@ -20,7 +20,7 @@ in
     rawDotFallback = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      example = "152.70.69.235#razorback.jagadam97.uk";
+      example = "161.118.162.158#razorback.jagadam97.uk";
       description = ''
         Optional raw DoT fallback for systemd-resolved itself. Format is
         `IP#hostname` (hostname is used as SNI for cert validation and as the

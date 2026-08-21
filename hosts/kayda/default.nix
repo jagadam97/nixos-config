@@ -42,9 +42,9 @@
   # AGH labels queries with ClientID "kayda" via the DoH path / DoT SNI.
   services.encryptedDns = {
     enable = true;
-    dohStamp = "sdns://AgcAAAAAAAAADTE1Mi43MC42OS4yMzUAEmtheWRhLmphZ2FkYW05Ny51axAvZG5zLXF1ZXJ5L2theWRh";
-    dotStamp = "sdns://AwcAAAAAAAAADTE1Mi43MC42OS4yMzUAEmtheWRhLmphZ2FkYW05Ny51aw";
-    rawDotFallback = "152.70.69.235#kayda.jagadam97.uk";
+    dohStamp = "sdns://AgcAAAAAAAAADzE2MS4xMTguMTYyLjE1OAASa2F5ZGEuamFnYWRhbTk3LnVrEC9kbnMtcXVlcnkva2F5ZGE";
+    dotStamp = "sdns://AwcAAAAAAAAADzE2MS4xMTguMTYyLjE1OAASa2F5ZGEuamFnYWRhbTk3LnVr";
+    rawDotFallback = "161.118.162.158#kayda.jagadam97.uk";
   };
 
   # Firewall

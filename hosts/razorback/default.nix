@@ -78,9 +78,9 @@
   # AGH labels queries with ClientID "razorback" via the DoH path / DoT SNI.
   services.encryptedDns = {
     enable = true;
-    dohStamp = "sdns://AgcAAAAAAAAADTE1Mi43MC42OS4yMzUAFnJhem9yYmFjay5qYWdhZGFtOTcudWsUL2Rucy1xdWVyeS9yYXpvcmJhY2s";
-    dotStamp = "sdns://AwcAAAAAAAAADTE1Mi43MC42OS4yMzUAFnJhem9yYmFjay5qYWdhZGFtOTcudWs";
-    rawDotFallback = "152.70.69.235#razorback.jagadam97.uk";
+    dohStamp = "sdns://AgcAAAAAAAAADzE2MS4xMTguMTYyLjE1OAAWcmF6b3JiYWNrLmphZ2FkYW05Ny51axQvZG5zLXF1ZXJ5L3Jhem9yYmFjaw";
+    dotStamp = "sdns://AwcAAAAAAAAADzE2MS4xMTguMTYyLjE1OAAWcmF6b3JiYWNrLmphZ2FkYW05Ny51aw";
+    rawDotFallback = "161.118.162.158#razorback.jagadam97.uk";
   };
 
   # Kernel networking tweaks
