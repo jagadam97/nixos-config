@@ -80,6 +80,47 @@
   # this on when the root moves to the Samsung EVO SSD.
   services.smartd.enable = false;
 
+  # Debian wrote to the LAN InfluxDB, bucket "pi" - keep the same target so
+  # existing dashboards keep working. Its Loki output is not carried over: it
+  # still pointed at an unedited grafana.net placeholder URL.
+  services.telegrafMetrics = {
+    influxUrls = [ "http://192.168.4.248:8086" ];
+    organization = "oracle";
+    bucket = "pi";
+    # Pi thermals. wireless is not carried over - wlan0 is unused.
+    extraInputs.temp = [ { } ];
+  };
+
+  # The shared disk input does not ignore NFS, and the Proxmox mounts are hard
+  # mounts. If 192.168.4.240 goes away, telegraf blocks stat'ing /mnt/* and the
+  # whole agent stalls, so skip network filesystems here.
+  services.telegraf.extraConfig.inputs.disk = lib.mkForce [
+    {
+      ignore_fs = [
+        "tmpfs"
+        "devtmpfs"
+        "devfs"
+        "overlay"
+        "squashfs"
+        "nfs"
+        "nfs4"
+      ];
+    }
+  ];
+
+  # The scraper reads its qBittorrent and InfluxDB credentials from one env
+  # file, so the whole file is the secret rather than individual keys.
+  sops.secrets."homelab-scrapper.env" = {
+    owner = "homelab-scrapper";
+    group = "homelab-scrapper";
+    restartUnits = [ "homelab-scrapper.service" ];
+  };
+
+  services.homelabScrapper = {
+    enable = true;
+    environmentFile = config.sops.secrets."homelab-scrapper.env".path;
+  };
+
   system.stateVersion = "26.11";
 
   # No secrets are used in phase 1. The age key derives from this host's SSH
@@ -88,7 +129,6 @@
   # credentials stored.
   sops.defaultSopsFile = ./secrets.yaml;
   sops.defaultSopsFormat = "yaml";
-  sops.age.keyFile = "/var/lib/sops-nix/keys.txt";
 
   # Interface names are pinned by MAC. The static address above is bound to
   # eth0, and this host is installed and administered without physical access:

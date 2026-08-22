@@ -46,6 +46,9 @@ in
     sops.secrets.INFLUX_TOKEN = {
       owner = "telegraf";
       group = "telegraf";
+      # Without this, rotating the token updates the file but leaves the running
+      # agent holding the old one, which looks exactly like a permissions bug.
+      restartUnits = [ "telegraf.service" ];
     };
     systemd.services.telegraf.serviceConfig.EnvironmentFile = config.sops.secrets.INFLUX_TOKEN.path;
 
