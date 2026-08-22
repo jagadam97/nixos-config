@@ -30,6 +30,13 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # aarch64-linux via QEMU binfmt, so this host can build pella's closure and
+  # push it over. pella is a 4GB Pi on a microSD with no GitHub credentials, so
+  # it neither should nor can build for itself - deploys are driven from here.
+  # Emulated builds are slow, but pella's closure is almost entirely cached;
+  # only the scraper and the activation scripts are actually built.
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
+
   # Networking - static IP via NetworkManager
   # Interface: enp3s0 (confirmed via ip a on Ubuntu)
   networking.networkmanager.enable = true;
