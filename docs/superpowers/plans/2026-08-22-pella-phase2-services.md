@@ -867,7 +867,27 @@ In `hosts/pella/default.nix`, after the smartd block:
     # Pi thermals. wireless is not carried over - wlan0 is unused.
     extraInputs.temp = [ { } ];
   };
+
+  # The shared disk input does not ignore NFS, and the Proxmox mounts are hard
+  # mounts. If 192.168.4.240 goes away, telegraf blocks stat'ing /mnt/* and the
+  # whole agent stalls, so skip network filesystems here.
+  services.telegraf.extraConfig.inputs.disk = lib.mkForce [
+    {
+      ignore_fs = [
+        "tmpfs"
+        "devtmpfs"
+        "devfs"
+        "overlay"
+        "squashfs"
+        "nfs"
+        "nfs4"
+      ];
+    }
+  ];
 ```
+
+The `mkForce` is needed because the shared module already defines `inputs.disk`;
+without it the two definitions conflict rather than merge.
 
 - [ ] **Step 3: Verify the rendered config before deploying**
 
