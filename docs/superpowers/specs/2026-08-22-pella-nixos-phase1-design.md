@@ -196,6 +196,14 @@ Layout above.
 
 ### Conflict found in existing modules
 
+`modules/common/ssh.nix` computes `PasswordAuthentication = !isKayda`, where
+`isKayda` is a hostname comparison against `"kayda"`. Every host that is not
+kayda therefore gets **password authentication enabled**. That is wrong for a box
+destined to be an internet-facing gateway, so `pella` forces it off along with
+`KbdInteractiveAuthentication`. The shared module is left untouched so no other
+host's behaviour changes; worth revisiting separately as it affects nauvoo and
+razorback too.
+
 `modules/common/nix-settings.nix:10` sets
 `extra-platforms = [ "i686-linux" "aarch64-linux" ]`. Correct on the x86_64 hosts,
 where it enables emulated aarch64 builds via binfmt. On an aarch64 host it
