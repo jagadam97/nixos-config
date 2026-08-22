@@ -24,32 +24,30 @@ microSD. The flag is currently present, so the guard no-ops. Before any deploy
 that could break networking, delete the flag to arm it; after verifying the box
 is reachable, recreate it. Never leave it armed once you are done.
 
-**Deploying.** Rebuild on pella itself — it is proven and adds no moving parts:
+**Deploying.** Deploys run from razorback, not on pella. This is not about
+speed: the scraper is fetched from a private GitHub repo, and evaluation needs
+that access. razorback authenticates to GitHub as the repo owner; pella does
+not, so an on-device rebuild cannot evaluate the flake at all once the scraper
+input exists.
 
 ```bash
 rsync -a --delete --exclude 'result*' --exclude '.direnv' \
-  ./ jagadam97@192.168.4.230:/tmp/nixos-config/
-ssh -t jagadam97@192.168.4.230 \
-  'cd /tmp/nixos-config && sudo nixos-rebuild switch --flake .#pella'
-```
-
-The Pi is fine for Go and for `etc`/unit rebuilds. Only reach for razorback
-(16 cores, LAN, aarch64 binfmt) if something needs a heavy build:
-
-```bash
-rsync -a --delete ./ jagadam97@razorback:/tmp/nixos-config/
+  ./ jagadam97@razorback:/tmp/nixos-config/
 ssh jagadam97@razorback 'cd /tmp/nixos-config && \
-  nix build .#nixosConfigurations.pella.config.system.build.toplevel --print-out-paths'
+  nix build .#nixosConfigurations.pella.config.system.build.toplevel --no-link --print-out-paths'
+ssh jagadam97@razorback "nix copy --to ssh://jagadam97@192.168.4.230 <STORE_PATH>"
+ssh -t jagadam97@192.168.4.230 'sudo <STORE_PATH>/bin/switch-to-configuration switch'
 ```
 
-**Rollback** is `sudo nixos-rebuild --rollback` on pella.
+Verified working: razorback reproduces pella's running closure byte-for-byte,
+and `jagadam97` is a trusted user on pella so `nix copy` is accepted. If
+razorback ever refuses with `Host key verification failed`, its known_hosts
+still holds the Debian install's key — `ssh-keygen -R 192.168.4.230` there.
 
-This deviates from the spec, which called for
-`nixos-rebuild --target-host ... --use-remote-sudo` driven from razorback. That
-form prompts for pella's sudo password on every deploy, and the
-`wheelNeedsPassword` decision that would fix it is still open. Rebuilding on the
-box is already proven, so the plan uses it and leaves the spec's method to adopt
-once that decision lands.
+`nixos-rebuild --target-host ... --use-remote-sudo` from razorback does the same
+thing in one command, but prompts for pella's sudo password on every deploy.
+Rebuilding on pella itself still works for changes that do not involve the
+private input, and is the fallback if razorback is unavailable.
 
 **Do not print secrets.** Two files hold credentials: the scraper env file on the
 Debian card and `hosts/pella/secrets.yaml`. Move them with redirection, never
