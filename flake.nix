@@ -153,7 +153,6 @@
           specialArgs = { inherit inputs; };
           modules = [
             sops-nix.nixosModules.sops
-            disko.nixosModules.disko
             nixos-hardware.nixosModules.raspberry-pi-4
             ./hosts/pella
             ./modules/common

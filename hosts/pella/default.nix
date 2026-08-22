@@ -7,14 +7,18 @@
   config,
   pkgs,
   lib,
+  modulesPath,
   ...
 }:
 
 {
   imports = [
+    # sd-image-aarch64 owns the partition layout, the FAT32 firmware partition
+    # and its contents (bootcode.bin, start4.elf, u-boot.bin, armstub8-gic.bin,
+    # config.txt). It uses an MBR table, which is what Debian booted from on
+    # this Pi, and it defines fileSystems for / and /boot/firmware by label.
+    (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
     ./hardware.nix
-    ./disko.nix
-    ./firmware.nix
   ];
 
   networking.hostName = "pella";
