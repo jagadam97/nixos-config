@@ -162,6 +162,7 @@
             # in hosts/pella/hardware.nix.
             ./hosts/pella
             ./modules/common
+            ./modules/services/nfs-mounts.nix
           ];
         };
       };

@@ -53,8 +53,10 @@
   networking.defaultGateway = "192.168.4.1";
   networking.nameservers = [ "192.168.4.1" ];
 
-  # eth1 is the TP-Link UE300 (RTL8153, MAC 5c:62:8b:25:de:73). Left
-  # unconfigured on purpose - it becomes the PPPoE WAN in phase 2.
+  # eth1 is the TP-Link UE300 (RTL8153, MAC 5c:62:8b:25:de:73). It was going to
+  # be the PPPoE WAN, but the ASUS RT-AC88U owns the network edge now, so it
+  # stays down and unconfigured. Its name is still pinned by MAC below in case
+  # it is ever used.
 
   # modules/common/ssh.nix enables password auth for every host that is not
   # kayda. Not acceptable on a future gateway.
@@ -69,6 +71,14 @@
   # modules/common/nix-settings.nix advertises i686-linux, which is meaningful
   # on the x86_64 hosts and false on this one.
   nix.settings.extra-platforms = lib.mkForce [ ];
+
+  environment.systemPackages = with pkgs; [ lm_sensors ];
+
+  # Disk health monitoring is wired but off. The only attached disk is the USB
+  # stick this system boots from, and SMART passthrough over a USB bridge is
+  # unreliable - a unit that always fails just teaches you to ignore it. Turn
+  # this on when the root moves to the Samsung EVO SSD.
+  services.smartd.enable = false;
 
   system.stateVersion = "26.11";
 
