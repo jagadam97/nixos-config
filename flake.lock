@@ -60,6 +60,26 @@
         "type": "github"
       }
     },
+    "homelab-scrapper": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1787415061,
+        "narHash": "sha256-tbV2MHSH5REMDUMjyfsnfBEfrKuytWlIRZlP8tdutcI=",
+        "ref": "refs/heads/main",
+        "rev": "9f805967e6daf9bd7d83f8f890dbab4941232f5d",
+        "revCount": 3,
+        "type": "git",
+        "url": "ssh://git@github.com/jagadam97/homelab-scrapper.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@github.com/jagadam97/homelab-scrapper.git"
+      }
+    },
     "nix-index-database": {
       "inputs": {
         "nixpkgs": [
@@ -149,6 +169,7 @@
         "darwin": "darwin",
         "disko": "disko",
         "home-manager": "home-manager",
+        "homelab-scrapper": "homelab-scrapper",
         "nix-index-database": "nix-index-database",
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs_2",
