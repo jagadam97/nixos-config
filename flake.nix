@@ -146,6 +146,19 @@
             }
           ];
         };
+
+        # Pella - Raspberry Pi 4 router (phase 1: NixOS only, routing is phase 2)
+        pella = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
+          specialArgs = { inherit inputs; };
+          modules = [
+            sops-nix.nixosModules.sops
+            disko.nixosModules.disko
+            nixos-hardware.nixosModules.raspberry-pi-4
+            ./hosts/pella
+            ./modules/common
+          ];
+        };
       };
 
       darwinConfigurations = {
