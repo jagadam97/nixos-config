@@ -18,9 +18,7 @@ rotation will apply on its own.
 Still open: the InfluxDB tokens are the ones Debian used and are due for
 rotation, and the root still lives on the USB stick rather than the EVO SSD.
 
-Original status line follows.
-
-**Status:** Designed. Phase 1 implemented — see
+Phase 1 implementation is described in
 `docs/superpowers/specs/2026-08-22-pella-nixos-phase1-design.md`
 **Host:** `pella`, Raspberry Pi 4B Rev 1.5, 4GB, `aarch64-linux`, 192.168.4.230
 
