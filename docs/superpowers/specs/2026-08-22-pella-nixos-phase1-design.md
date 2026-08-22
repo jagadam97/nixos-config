@@ -1,7 +1,7 @@
 # pella — NixOS on Raspberry Pi 4, Phase 1
 
 **Date:** 2026-08-22
-**Status:** Design complete, pending user review
+**Status:** In progress — implementation tracked in `docs/superpowers/plans/2026-08-22-pella-nixos-phase1.md`
 **Host:** `pella` (new), Raspberry Pi 4 Model B Rev 1.5, 4GB, `aarch64-linux`
 
 ## Goal
@@ -34,19 +34,21 @@ that carries the internet.
 | Bootloader EEPROM | 2026/05/17, up to date, `capabilities 0x7f` |
 | `BOOT_ORDER` | unset — firmware default `0xf41` (SD, then USB) |
 | VL805 (USB3) firmware | `000138c0`, up to date |
-| Internal storage | `mmcblk0`, 29.8GB microSD — Samsung (`manfid 0x1b`, `oemid 0x534d`, `EB1QT`), discard supported (4 MiB granularity) |
+| Internal storage | `mmcblk0`, 29.8GB microSD — Samsung (`manfid 0x1b`, `oemid 0x534d`, `EB1QT`), MBR table, discard supported (4 MiB granularity) |
 | Built-in NIC | `eth0`, `bcmgenet`, 1000Mb/s full, MAC `d8:3a:dd:24:76:1e` |
 | USB NIC | TP-Link UE300 / RTL8153, `r8152` v1.12.13, MAC `5c:62:8b:25:de:73`, Bus 002 @ 5000M |
-| Pendrive | SanDisk 3.2Gen1 `0781:55a9`, 114.6GB, Bus 002 @ 5000M, `uas` |
-| Pendrive throughput | 8.4 MB/s buffered read, 0 I/O errors, 0 UAS resets |
+| Pendrive | SanDisk 3.2Gen1 `0781:55a9`, 114.6GB, Bus 002 @ 5000M — unused in the final design |
 | Wifi | `wlan0` down; `iw list` reports AP mode supported |
 | Thermals | 54.5°C idle, `throttled=0x0` |
 
 ## Decision record
 
-### Install method: not nixos-anywhere
+The install method changed twice during design. Both dead ends are recorded
+because the reasons are load-bearing and would otherwise be rediscovered.
 
-Ruled out by measurement. The Raspberry Pi kernel has no kexec:
+### Not nixos-anywhere — no kexec
+
+Ruled out by measurement:
 
 ```
 # CONFIG_KEXEC_FILE is not set
@@ -58,187 +60,146 @@ Plain `CONFIG_KEXEC` is absent from the kernel config entirely, and no
 `/sys/kernel/kexec_*` entries exist at runtime. nixos-anywhere kexecs into its
 installer as a mandatory step for non-NixOS targets, so it cannot work here.
 
-### Boot method: D3 — nixos-hardware + separate ext4 `/boot`
+### Not a two-stage pendrive install
 
-btrfs root (user requirement) is incompatible with the naive Raspberry Pi boot
-path. `nixos-hardware`'s `raspberry-pi/4` module sets
-`boot.loader.generic-extlinux-compatible.enable = true` and explicitly does not
-manage the firmware partition or `config.txt`. That is the u-boot path: RPi
-firmware loads u-boot from the FAT partition, u-boot reads
-`/boot/extlinux/extlinux.conf`, then boots the kernel.
+The first design built a throwaway `sdImage` installer, wrote it to the pendrive,
+set `BOOT_ORDER=0xf14`, booted it, then ran `disko` and `nixos-install` on live
+hardware. Workable, but every piece of that machinery existed solely because
+btrfs cannot be produced by `sdImage`. It also offered no way to verify the
+result before committing to it.
 
-U-Boot's btrfs support is read-only and unreliable with subvolumes. With `/` on an
-`@root` subvolume, u-boot would have to parse btrfs to find the kernel — the
-failure mode is an unbootable Pi, not a degraded one.
+### Not an offline disko image — broken upstream
 
-Giving `/boot` its own small ext4 partition removes the problem entirely: u-boot
-reads ext4, and btrfs is only ever mounted by the initrd.
+Strictly better on paper: one stage, and the image could be inspected before
+being written. **It does not evaluate against current nixpkgs.**
 
-Alternatives rejected:
+disko's `lib/make-disk-image.nix:44` passes `pkgs.aggregateModules [...]` as
+vmTools' `kernel` argument. nixpkgs PR #530764, merged 2026-06-11, made that a
+hard error:
 
-| Option | Why not |
+```
+error: vmTools: the `kernel` argument (kernel-modules) has no `target` attribute
+```
+
+- disko issue **#1277** is this error verbatim, open since 2026-07-06, unfixed
+- disko's master HEAD is `ff8702b4` dated **2026-06-11** — the rev already in our
+  lock. No newer disko exists to update to; the project has not moved since
+  hours before the nixpkgs change landed
+- the `diskoImagesScript` fallback is separately broken by issue **#1027**
+  (`$stdenv` unset in `vmRunCommand`)
+
+The one workaround was pinning a pre-2026-06-11 nixpkgs for
+`disko.imageBuilder.pkgs`. **Rejected**: it puts a stalled tool plus a frozen
+nixpkgs in the install path of the machine that will carry the household
+internet — the same fragility argument that ruled out `raspberry-pi-nix`.
+
+Note this only affects disko's *image builder*. Its on-device partitioning
+(`diskoScript`, `formatScript`, `mountScript`) evaluates fine, which is why the
+pendrive design remained viable as a fallback.
+
+### Chosen: `sd-image-aarch64`, ext4 root
+
+Maintained, needs no workaround, and it removes risk areas outright rather than
+mitigating them:
+
+| Risk in the earlier designs | Status |
 |---|---|
-| `raspberry-pi-nix` (no u-boot, firmware loads kernel from `config.txt`) | **Archived March 2025** — both `tstat/` and the `nix-community/` fork are read-only. The technical property is correct and it would work pinned by `flake.lock`, but an unmaintained flake in the boot path of a gateway is a liability. |
-| RPi4 UEFI (`pftf/RPi4`) + ESP + systemd-boot | Would exactly match the x86 hosts, and it is file-based on the FAT partition with no EEPROM/bricking risk. But it **enforces a 3GB RAM limit by default** on 4GB boards due to DMA bugs, defaults to ACPI over device tree, and documents missing drivers. Losing 25% of RAM and taking the ACPI path on a box that needs `genet` and VL805 USB rock-solid is a bad trade. |
-| `sdImage` dd'd straight to the card | Produces ext4 root; no btrfs option. |
-| `disko` + `nixos-install` without a separate `/boot` | Hits the u-boot/btrfs problem above. |
+| `/boot/firmware` not populated — `nixos-hardware` does not manage it, so this needed a hand-written activation script replicating `sdImage.populateFirmwareCommands` | Gone — `sdImage` does it |
+| GPT support unverified on this board | Gone — `sdImage` uses MBR, which is what Debian booted from here |
+| Manual partition + filesystem resize after writing | Gone — `sdImage.expandOnBoot` |
+| u-boot unable to read btrfs subvolumes, requiring a separate ext4 `/boot` | Gone — ext4 root, extlinux lives on it |
+| Three-partition layout diverging from the x86 hosts | Gone — two partitions |
+
+**The cost, stated plainly:** ext4 rather than btrfs. No transparent compression
+on a 30GB card that will hold a Nix store, and no checksumming to catch SD bit
+rot. The user accepted this on 2026-08-22, having asked for the simpler path once
+the btrfs complexity became clear.
+
+This is a real loss, not a wash. Revisiting it is noted under Future work.
 
 ### Storage medium
 
 Final system on the internal 29.8GB microSD, written from the macbook's built-in
-SD reader. The pendrive is not used at all under the offline-image approach and
-stays free — user preference was against a dongle permanently attached to the Pi.
+SD reader. The pendrive is not used at all.
 
 Accepted for phase 1 with a caveat recorded: a microSD is weak for a 24/7
 gateway. Constant journald writes plus repeated `nixos-rebuild` are what kill
 cards, and a dead card takes the whole network down rather than one service. A
-USB SSD is the correct long-term medium. Revisit before phase 2 goes live.
+USB SSD is the correct long-term medium — and it matters more now that ext4 gives
+up checksumming, so a failing card will corrupt silently rather than complain.
 
 ### Debian
 
 Expendable. User confirmed on 2026-08-22 that no backup is required. Debian
-survives until the `dd` in step 5 and is destroyed there. There is no
-unplug-to-rollback path, which is the accepted cost of the offline-image
-approach; the verification gate in step 3 is what replaces it.
+survives until the `dd` and is destroyed there. There is no unplug-to-rollback
+path; the pre-write image verification is what replaces it.
 
-## Approach: offline disk image
-
-Build a complete bootable `.raw` image with `disko`'s image builder, inspect it,
-then write it to the microSD from the macbook's built-in SD reader.
+## Approach
 
 ```
-alienX (x86_64 + binfmt for the aarch64 userland)
-  └─> nix build .#pella...system.build.diskoImages
-        └─> pella-aarch64-rpi4.raw   (GPT: FAT32 firmware | ext4 /boot | btrfs root)
-              ├─ loop-mount and verify  <- firmware, extlinux, subvolumes
-              └─ dd to microSD from the macbook -> boot -> grow btrfs to fill card
+alienX (x86_64, aarch64 via qemu binfmt)
+  └─> nix build .#nixosConfigurations.pella.config.system.build.sdImage
+        └─> *.img   (MBR: FAT32 firmware | ext4 root, label NIXOS_SD)
+              ├─ loop-mount and verify  <- u-boot.bin, config.txt, extlinux paths
+              └─ dd to microSD from the macbook -> boot -> root expands itself
 ```
 
-### Why this rather than an installer
-
-Three problems had to be solved together and this solves all of them:
-
-1. **The Pi cannot install to the card it is running Debian from.** An offline
-   image sidesteps it — nothing is installed on the Pi at all.
-2. **btrfs rules out `sdImage`**, which only produces ext4. disko's image builder
-   has no such restriction.
-3. **`nixos-hardware` does not populate `/boot/firmware`.** disko's image builder
-   runs a real `nixos-install`, which runs activation scripts, so
-   `hosts/pella/firmware.nix` populates it inside the build VM.
-
-Verified in `disko/lib/make-disk-image.nix`:
-
-```
-nixos-install --root "$rootMountPoint" --system <toplevel> --keep-going ...
-```
-
-`nixos-install` runs `switch-to-configuration boot`, so activation scripts and
-the bootloader installer both run during the image build.
-
-Cross-building uses `disko.imageBuilder.enableBinfmt`, which runs the build VM
-with an **x86_64 kernel** and binfmt for the aarch64 userland — not a fully
-emulated ARM VM.
-
-### The property that matters most
-
-**The image is inspected before any hardware is touched.** Loop-mounting the
-`.raw` on alienX confirms `u-boot.bin`, `config.txt`, `extlinux.conf` and the
-five btrfs subvolumes are all present and correct. Under the earlier
-pendrive-based plan, a wrong firmware partition would have surfaced as a black
-screen *after* Debian was already destroyed. Here it is a failed `ls`.
-
-### Rejected: two-stage pendrive install
-
-The first version of this design built a throwaway `sdImage` installer, wrote it
-to the pendrive, flipped `BOOT_ORDER` to `0xf14`, booted it, and ran `disko` plus
-`nixos-install` on live hardware. It worked on paper but cost an extra flake
-output, two EEPROM changes, partitioning on the live box, and gave no way to
-verify the result in advance. The offline image is strictly less machinery.
-
-Its one advantage — Debian surviving as an unplug-to-rollback path during
-validation — is worth nothing here, since Debian is expendable.
+The verification step is the property worth protecting: loop-mounting the image
+on alienX confirms `u-boot.bin`, `config.txt` and every `LINUX`/`INITRD` path in
+`extlinux.conf` before the card is written. A wrong boot payload is a failed
+`ls`, not a black screen after Debian is gone.
 
 ## Install sequence
 
-1. Build the system closure on alienX, and verify the `pella-rpi-firmware`
-   derivation actually contains `u-boot.bin` and `armstub8-gic.bin`.
-2. Build the image:
-   `nix build .#nixosConfigurations.pella.config.system.build.diskoImages`
-3. **Verification gate** — loop-mount the `.raw` on alienX and check the
-   partition order, firmware partition contents, `extlinux.conf` (including that
-   its `LINUX`/`INITRD` paths resolve), and the btrfs subvolumes. Nothing has
-   been written to hardware at this point.
-4. Copy the `.raw` to the macbook.
-5. Power the Pi down, move the microSD to the macbook's reader, confirm the
+1. Build the system closure, then the image, on alienX.
+2. **Verification gate** — loop-mount the `.img`, check the MBR table, the
+   firmware partition contents, and that `extlinux.conf`'s referenced kernel and
+   initrd exist. Nothing has touched hardware yet.
+3. Copy the `.img` to the macbook.
+4. Power the Pi down, move the microSD to the macbook's reader, confirm the
    device identifier and size, `dd` to `/dev/rdiskN`. **This destroys Debian.**
-6. Reinstall the card, power on.
-7. Grow partition 3 and `btrfs filesystem resize max /` to fill the card — the
-   image is built at 12G and disko has no auto-resize.
-8. Confirm `nixos-rebuild switch --flake .#pella` works on the box itself.
+5. Reinstall the card, power on. `sdImage.expandOnBoot` grows the root partition.
+6. Confirm `nixos-rebuild switch --flake .#pella` works on the box itself.
 
-`imageSize` is 12G rather than the card's 29.8G because build, transfer and `dd`
-time all scale linearly with it. Growing btrfs afterwards is online and takes
-seconds.
+`BOOT_ORDER` is left at the firmware default `0xf41` (SD first). Nothing in this
+design changes the EEPROM.
 
-## Disk layout (`hosts/pella/disko.nix`)
+## Disk layout
 
-| Part | Size | FS | Mount | Purpose |
-|---|---|---|---|---|
-| `p1` | 512M | FAT32 | `/boot/firmware` | RPi firmware blobs + u-boot |
-| `p2` | 1G | ext4 | `/boot` | extlinux config + kernels — u-boot reads this |
-| `p3` | rest | btrfs | `/` | subvolumes below |
+Owned by `sd-image-aarch64`, not by this repo:
 
-Subvolumes match the other hosts exactly — `@root`, `@nix`, `@home`, `@varlib`,
-`@log` — with `compress=zstd:3 noatime discard=async`.
+| Part | FS | Mount | Purpose |
+|---|---|---|---|
+| `p1` | FAT32 | `/boot/firmware` | RPi firmware blobs, u-boot, `config.txt`, DTBs |
+| `p2` | ext4 | `/` | Everything, including `/boot/extlinux`. Label `NIXOS_SD` |
 
-Three deliberate deviations from `hosts/{kayda,razorback,nauvoo}/disko.nix`:
-
-- **`zstd:3` instead of `zstd:6`.** Level 6 is CPU-hungry, and four Cortex-A72
-  cores will be competing with PPPoE softirq load in phase 2. Level 3 (the btrfs
-  default) gets most of the ratio for a fraction of the CPU. The x86 hosts keep `:6`.
-- **Three partitions instead of two**, for the u-boot reason above.
-- **`ssd` dropped, `discard=async` added.** `ssd` is an allocation hint for real
-  SSDs and does nothing on a microSD. `discard=async` replaces it with something
-  that does: the card reports `discard_granularity=4194304` and
-  `discard_max_bytes=170519429120`, and `fstrim` is accepted. The async variant
-  keeps trims off the write path — synchronous discard can stall writes on SD.
-  Granularity is a coarse 4 MiB, so only 4 MiB-aligned free regions are trimmed.
+Root is mounted by label (`/dev/disk/by-label/NIXOS_SD`), so the image is not
+tied to a particular device path — it would boot equally from a USB SSD.
 
 ## Repo changes
 
 ### `flake.nix`
 
-- New input: `nixos-hardware` (currently absent).
-- `nixosConfigurations.pella` with `system = "aarch64-linux"`. The existing
-  `linuxSystem = "x86_64-linux"` binding stays and is simply unused here.
-- No separate installer output is needed: the offline image approach requires
-  only the one `pella` configuration.
+- New input: `nixos-hardware` (pinned 2026-08-19)
+- `nixosConfigurations.pella` with `system = "aarch64-linux"`, modules
+  `sops-nix` + `nixos-hardware.raspberry-pi-4` + `./hosts/pella` + `./modules/common`
 
-Modules for `pella`: `sops-nix` (wired, unused in phase 1), `disko`,
-`nixos-hardware`'s `raspberry-pi/4`, `./hosts/pella`, `./modules/common`.
-
-**No home-manager** — it roughly doubles an emulated aarch64 build for no phase-1
-value. Easy to add later.
+**No home-manager** — it roughly doubles the build for no phase-1 value. **No
+disko** — nothing partitions the disk any more.
 
 ### `hosts/pella/default.nix`
 
-- `networking.hostName = "pella"`
-- User account with the same four SSH public keys as `hosts/kayda/default.nix`
-- `time.timeZone = "Asia/Kolkata"`, `system.stateVersion = "26.11"` (matches kayda)
-- Static networking (below)
-- `nix.settings.extra-platforms = lib.mkForce [ ]`
-- zram swap — Debian currently runs 2GB of zram, worth keeping on a 4GB box that
-  will run `nixos-rebuild`
+Imports `sd-image-aarch64.nix` via `modulesPath`. Hostname, user `jagadam97` with
+the same four SSH keys as `hosts/kayda/default.nix`, static networking,
+`Asia/Kolkata`, `system.stateVersion = "26.11"`, sops stub.
 
 ### `hosts/pella/hardware.nix`
 
-Raspberry Pi 4 specifics, filesystem wiring for the three partitions.
+`aarch64-linux` platform, `sdImage.expandOnBoot`, `sdImage.compressImage = false`
+(so the image can be `dd`'d without decompressing), initrd modules for the
+microSD plus USB/uas, zram at 50%.
 
-### `hosts/pella/disko.nix`
-
-Layout above.
-
-### Conflict found in existing modules
+### Conflicts found in existing modules
 
 `modules/common/ssh.nix` computes `PasswordAuthentication = !isKayda`, where
 `isKayda` is a hostname comparison against `"kayda"`. Every host that is not
@@ -305,23 +266,21 @@ No native `aarch64-linux` builder exists. Both remote builders are x86_64 with
 Emulation costs less than it sounds: `aarch64-linux` is a first-class nixpkgs
 platform with full `cache.nixos.org` coverage, and `builders-use-substitutes = true`
 is already set, so alienX pulls prebuilt aarch64 binaries and emulates only
-uncached derivations — essentially image assembly and this config.
+uncached derivations.
 
-## Verification gate (step 3, on the built image, before Debian is destroyed)
+## Verification gate (before Debian is destroyed)
 
-Performed by loop-mounting the `.raw` on alienX. Nothing has been written to
-hardware yet, so every failure here is free.
+Performed by loop-mounting the built `.img` on alienX. Nothing has been written to
+hardware, so every failure here is free.
 
-- `sfdisk -l` shows GPT with three partitions **in order**: ~512M FAT, ~1G Linux,
-  remainder Linux. Wrong order means the `priority` values did not apply.
+- `sfdisk -l` shows an MBR (`dos`) table with two partitions: a small FAT and a
+  larger Linux one
 - Firmware partition contains `bootcode.bin`, `start4.elf`, `fixup4.dat`,
   `u-boot.bin`, `armstub8-gic.bin`, `bcm2711-rpi-4-b.dtb`, `config.txt`
 - `config.txt` contains `kernel=u-boot.bin` and `arm_64bit=1`
 - `/boot/extlinux/extlinux.conf` exists and every `LINUX`/`INITRD` path it names
   resolves to a real file
-- btrfs root lists all five subvolumes; `/etc/fstab` carries `compress=zstd:3`
-  and `discard=async`
-- `/etc/hostname` is `pella`
+- `/etc/os-release` says NixOS and `/etc/hostname` says `pella`
 
 ## Acceptance (after the card is written and booted)
 
@@ -329,31 +288,34 @@ hardware yet, so every failure here is free.
 - SSH reachable on `192.168.4.230` with an existing key
 - Tailscale up, reachable on its tailnet address
 - `eth0` static `192.168.4.230/24`, default route via `.1`, no DHCP client running
-- All three partitions mounted; `btrfs subvolume list /` reports the five subvolumes
-- `mount | grep btrfs` confirms `compress=zstd:3` and `discard=async`
-- Root grown to fill the card (~28G) after `btrfs filesystem resize max /`
+- Root filesystem expanded to fill the card (~28-29G) by `expandOnBoot`
+- `/boot/firmware` mounted, firmware files present
 - `eth1` present, driver `r8152`, still on Bus 002 at 5000M, ready for phase 2
 - `nixos-rebuild switch --flake .#pella` succeeds on the box itself
-- A second rebuild does **not** re-copy the firmware — the stamp file makes the
-  activation script idempotent
 - `journalctl -p err -b` clean of storage and network errors
 
 ## Risks
 
 | Risk | Mitigation |
 |---|---|
-| `/boot/firmware` comes out empty in the image | Caught by the verification gate before the card is written. Fall back to `diskoImagesScript --post-format-files` to inject the firmware directly |
-| RPi bootloader can't read the GPT image | Not verified on this board; nixpkgs `sdImage` and Debian both used MBR here. Fall back to disko's `table` type with `format = "msdos"`, accepting its deprecation warning |
-| u-boot can't read the ext4 `/boot` | Standard, well-trodden path — the whole point of D3. Caught by the verification gate |
-| `nixos-hardware` RPi4 quirk | Fall back to `raspberry-pi-nix` pinned via `flake.lock`, accepting the unmaintained dependency |
-| Boots but SSH never answers | Attach HDMI + keyboard; `console=tty1` is set so boot messages are visible. Card is rewritable |
-| Writing to the wrong `/dev/diskN` on the macbook | Confirm size (~31.9GB) via `diskutil list external physical` and unplug other external disks first |
-| 30GB microSD weak for a 24/7 gateway | Accepted for phase 1; revisit before phase 2 with a USB SSD |
-| Debian destroyed with no rollback | Accepted — user confirmed no backup required on 2026-08-22 |
+| Firmware partition missing `u-boot.bin` | Caught by the verification gate before the card is written |
+| `extlinux.conf` referencing a kernel that isn't there | Caught by the verification gate — the paths are resolved explicitly |
+| `nixos-hardware`'s `linuxPackages_rpi4` conflicting with `sd-image-aarch64` | Drop `nixos-hardware.nixosModules.raspberry-pi-4` from the `pella` modules; the generic aarch64 kernel is the more heavily tested NixOS-on-ARM path |
+| Boots but SSH never answers | `sd-image-aarch64` sets `console=tty0`, so HDMI + keyboard shows boot messages. Most likely `eth0` renamed — check `ip -br link`. Card is rewritable |
+| Writing to the wrong `/dev/diskN` on the macbook | Confirm ~31.9GB via `diskutil list external physical`, unplug other externals first |
+| 30GB microSD weak for a 24/7 gateway, now without btrfs checksums | Accepted for phase 1; a USB SSD is the right medium and matters more now that corruption would be silent |
+| Debian destroyed with no rollback | Accepted — user confirmed no backup required |
+
+## Future work
+
+- **btrfs**, if wanted later: either wait for disko issue #1277 to be fixed and
+  rebuild with an offline image, or convert in place with `btrfs-convert`. Not
+  something to attempt on a box about to become the household gateway.
+- **USB SSD** as the root medium, before this box carries live traffic.
+- **`modules/common/ssh.nix`** — the `!isKayda` password-auth logic should
+  probably be inverted repo-wide rather than overridden per host.
 
 ## Phase 2 preview (not in scope)
-
-Recorded so phase 1 does not paint us into a corner:
 
 - `eth0` becomes LAN at `192.168.4.1`; `eth1` (UE300) becomes PPPoE WAN.
   Recommendation is built-in NIC on LAN — `r8152` can reset under sustained load,
