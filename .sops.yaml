@@ -14,6 +14,10 @@ keys:
 
   - &kayda age150p2u8vqrqg7jmgxqqzy308elrup08p0mln3lpvr8wyj6yswhguqxsz8eq
 
+  # pella (Raspberry Pi 4 services host)
+  # Derived from its SSH host key: ssh-to-age < /etc/ssh/ssh_host_ed25519_key.pub
+  - &pella age19j8p0l4squ8rr0gj44ggdlj2pczjkn4drc8d6rlanuzp6cpmeujqpcre9v
+
 creation_rules:
   # Host-specific secrets (each host can only decrypt its own)
   - path_regex: hosts/nauvoo/secrets\.yaml$
@@ -44,6 +48,12 @@ creation_rules:
     key_groups:
       - age:
           - *kayda
+          - *admin
+
+  - path_regex: hosts/pella/secrets\.yaml$
+    key_groups:
+      - age:
+          - *pella
           - *admin
 
   # Shared secrets (all hosts can decrypt)

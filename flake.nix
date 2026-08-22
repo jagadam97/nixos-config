@@ -21,10 +21,20 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
 
     nixpkgs-jellyfin.url = "github:NixOS/nixpkgs/4c1018dae018162ec878d42fec712642d214fdfa";
+
+    # The scraper is packaged in its own repo; this pulls that build. Private
+    # repo, so whoever evaluates needs GitHub access - razorback does, pella
+    # does not, which is why deploys are driven from razorback.
+    homelab-scrapper = {
+      url = "git+ssh://git@github.com/jagadam97/homelab-scrapper.git";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -35,6 +45,7 @@
       home-manager,
       sops-nix,
       disko,
+      nixos-hardware,
       nix-index-database,
       nixpkgs-jellyfin,
       ...
@@ -141,6 +152,27 @@
               home-manager.backupFileExtension = "bak";
               home-manager.users.jagadam97 = import ./home/users/jagadam97;
             }
+          ];
+        };
+
+        # Pella - Raspberry Pi 4 router (phase 1: NixOS only, routing is phase 2)
+        pella = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
+          specialArgs = { inherit inputs; };
+          modules = [
+            sops-nix.nixosModules.sops
+            # nixos-hardware.nixosModules.raspberry-pi-4 is deliberately NOT
+            # used: it pins linuxPackages_rpi4, which is not in
+            # cache.nixos.org (404), so it would compile an ARM kernel plus a
+            # ZFS module under qemu emulation. The generic aarch64 kernel is
+            # cached (200) and is the standard sd-image-aarch64 path. The
+            # RPi-specific initrd modules it would have added are set by hand
+            # in hosts/pella/hardware.nix.
+            ./hosts/pella
+            ./modules/common
+            ./modules/services/nfs-mounts.nix
+            ./modules/services/homelab-scrapper.nix
+            ./modules/services/telegraf.nix
           ];
         };
       };
