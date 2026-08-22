@@ -64,6 +64,21 @@
     xfs = lib.mkForce false;
   };
 
+  # Flash root: no atime writes.
+  #
+  # sd-image-aarch64.nix defines / by label and sets only x-initrd.mount, so the
+  # mount lands on relatime - one atime write per file per day. Across a
+  # /nix/store that is thousands of writes for a timestamp nothing on this host
+  # reads. The spec's mount options were lost in the btrfs -> ext4 pivot;
+  # noatime is the part that still matters now the root is a microSD.
+  #
+  # This concatenates with the option sd-image sets rather than replacing it -
+  # fileSystems.<name>.options is a list, and list definitions merge.
+  #
+  # Periodic TRIM is already covered: services.fstrim.enable defaults to true
+  # and this card supports discard at 4 MiB granularity.
+  fileSystems."/".options = [ "noatime" ];
+
   # 4GB board that will be running nixos-rebuild. Debian ran 2GB of zram here,
   # which is worth keeping.
   zramSwap = {

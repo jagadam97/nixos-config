@@ -140,68 +140,12 @@
     SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="5c:62:8b:25:de:73", NAME="eth1"
   '';
 
-  # Remote recovery guard.
-  #
-  # NixOS boots from the USB disk while Debian stays untouched on the microSD,
-  # with the EEPROM boot order set to USB first, microSD second. The firmware
-  # only falls back to the card when the USB disk fails to boot at all - a boot
-  # that reaches userspace but is unreachable over the network would strand the
-  # box, and there is no console on it.
-  #
-  # So unless a boot is confirmed within 20 minutes, take start4.elf off the USB
-  # firmware partition and reboot: the firmware can then no longer boot the USB
-  # disk and falls through to Debian, which is reachable.
-  #
-  #   confirm:  sudo touch /var/lib/pella-boot-confirmed
-  #   re-arm:   sudo rm /var/lib/pella-boot-confirmed
-  #   undo a trip, from Debian: mount the USB FAT partition and rename
-  #             start4.elf.disabled back to start4.elf
-  systemd.services.pella-boot-guard = {
-    description = "Fall back to microSD boot unless this boot was confirmed";
-    path = [
-      pkgs.util-linux
-      pkgs.coreutils
-      pkgs.systemd
-    ];
-    serviceConfig.Type = "oneshot";
-    script = ''
-      if [ -e /var/lib/pella-boot-confirmed ]; then
-        echo "boot confirmed, leaving USB boot in place"
-        exit 0
-      fi
-      echo "boot not confirmed - disabling USB boot so the firmware falls back to the microSD"
-
-      # /boot/firmware is nofail,noauto, and the image does not ship the mount
-      # point, so create it before mounting.
-      mkdir -p /boot/firmware
-      if ! mount /boot/firmware; then
-        echo "could not mount the firmware partition - staying up instead of rebooting"
-        exit 1
-      fi
-
-      if [ -e /boot/firmware/start4.elf ]; then
-        mv /boot/firmware/start4.elf /boot/firmware/start4.elf.disabled
-      fi
-      sync
-      # Only reboot once USB boot is provably disabled. Rebooting on a failed
-      # rename would just boot this system again and loop every OnBootSec.
-      if [ -e /boot/firmware/start4.elf ] || [ ! -e /boot/firmware/start4.elf.disabled ]; then
-        echo "start4.elf is still in place - staying up instead of rebooting into a loop"
-        umount /boot/firmware || true
-        exit 1
-      fi
-      umount /boot/firmware || true
-      systemctl reboot
-    '';
-  };
-
-  systemd.timers.pella-boot-guard = {
-    description = "Arm the microSD fallback 20 minutes into each boot";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnBootSec = "20min";
-      AccuracySec = "5s";
-      Unit = "pella-boot-guard.service";
-    };
-  };
+  # The microSD fallback guard that used to live here is gone with the move of
+  # the root to the microSD itself. It renamed start4.elf on the boot device's
+  # firmware partition whenever a boot went unconfirmed, so that the firmware
+  # fell through to Debian on the card. Now that the card *is* the root there is
+  # nothing behind it to fall through to: the rename would only make this host
+  # unbootable. The SanDisk USB disk is the recovery medium instead - it is not
+  # attached during normal boots, because it carries the same NIXOS_SD and
+  # FIRMWARE labels and root is mounted by label.
 }
