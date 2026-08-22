@@ -63,6 +63,21 @@
   services.openssh.settings.PasswordAuthentication = lib.mkForce false;
   services.openssh.settings.KbdInteractiveAuthentication = lib.mkForce false;
 
+  # Key-only root, for deploy-rs pushes from kayda.
+  #
+  # modules/common/ssh.nix sets PermitRootLogin = "no" for the whole fleet. This
+  # host is the exception because deploys have to run unattended: activation is
+  # root's job, and magic rollback needs the deployer to reconnect on its own
+  # within confirmTimeout, so there is nobody to type a sudo password. Password
+  # auth stays force-disabled above, so this is key-only.
+  #
+  # The key below is kayda's deploy key, not an interactive login key. Whichever
+  # account on kayda holds the private half is the one that must run `deploy`.
+  services.openssh.settings.PermitRootLogin = lib.mkForce "prohibit-password";
+  users.users.root.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG9OYOCMFtM/x8dtUp/FamUELYhmmVfvqkh+7Kla3DvR kayda@nixos"
+  ];
+
   networking.firewall.enable = true;
   networking.firewall.allowedTCPPorts = [ 22 ];
 

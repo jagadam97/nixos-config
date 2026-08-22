@@ -35,6 +35,15 @@
       url = "git+ssh://git@github.com/jagadam97/homelab-scrapper.git";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Push-based deploys for pella. Chosen over colmena for magic rollback: the
+    # target reverts to the previous generation on its own if the deployer
+    # cannot reconnect, which is the safety net a console-less box that is
+    # about to become the household router actually needs.
+    deploy-rs = {
+      url = "github:serokell/deploy-rs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -48,6 +57,7 @@
       nixos-hardware,
       nix-index-database,
       nixpkgs-jellyfin,
+      deploy-rs,
       ...
     }@inputs:
     let
@@ -199,5 +209,29 @@
           ];
         };
       };
+
+      # deploy-rs. Run from kayda, which builds aarch64 under binfmt and pushes
+      # the finished closure, so pella never needs GitHub credentials for the
+      # private homelab-scrapper input.
+      #
+      # hostname is the LAN address on purpose, not the Tailscale name: magic
+      # rollback works by having the deployer reconnect after activation, and
+      # activation can restart tailscaled. Over Tailscale that reconnect can
+      # fail and roll back a perfectly good deploy. kayda is on the same
+      # 192.168.4.0/24 subnet, so the LAN path stays up across activation.
+      deploy.nodes.pella = {
+        hostname = "192.168.4.230";
+        profiles.system = {
+          sshUser = "root";
+          user = "root";
+          path = deploy-rs.lib.aarch64-linux.activate.nixos self.nixosConfigurations.pella;
+          magicRollback = true;
+          autoRollback = true;
+          confirmTimeout = 60;
+        };
+      };
+
+      # Makes `nix flake check` validate the node definitions above.
+      checks = builtins.mapAttrs (system: deployLib: deployLib.deployChecks self.deploy) deploy-rs.lib;
     };
 }
