@@ -356,9 +356,13 @@ If it fails to fetch, your ssh key is not on the repo — verify with
 - [ ] **Step 3: Verify the package evaluates for pella's platform**
 
 ```bash
-nix eval --raw .#inputs.homelab-scrapper.packages.aarch64-linux.default.outPath
+nix eval --raw 'git+ssh://git@github.com/jagadam97/homelab-scrapper.git#packages.aarch64-linux.default.outPath'
 ```
 Expected: a `/nix/store/...-homelab-scrapper-...` path.
+
+Evaluate the input flake directly like this. `.#inputs.homelab-scrapper...`
+does not work - flake inputs are not exposed as outputs of the consuming
+flake, so that form fails with `does not provide attribute`.
 
 - [ ] **Step 4: Commit**
 
