@@ -47,6 +47,23 @@
   ];
   boot.initrd.kernelModules = [ ];
 
+  # sd-image-aarch64 imports nixos/modules/profiles/base.nix, which enables
+  # btrfs, cifs, f2fs, ntfs, xfs and zfs. This host needs exactly two: ext4 for
+  # the root and vfat for the firmware partition.
+  #
+  # zfs is the one that actually matters. It is an out-of-tree kernel module
+  # pinned to the exact kernel version, so leaving it in means a zfs/kernel
+  # version mismatch can block a nixos-rebuild - on the machine that will be
+  # carrying the household internet. The rest are just closure weight.
+  boot.supportedFilesystems = {
+    zfs = lib.mkForce false;
+    btrfs = lib.mkForce false;
+    cifs = lib.mkForce false;
+    f2fs = lib.mkForce false;
+    ntfs = lib.mkForce false;
+    xfs = lib.mkForce false;
+  };
+
   # 4GB board that will be running nixos-rebuild. Debian ran 2GB of zram here,
   # which is worth keeping.
   zramSwap = {
