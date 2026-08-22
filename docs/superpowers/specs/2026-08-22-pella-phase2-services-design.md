@@ -1,6 +1,25 @@
 # pella — Phase 2: NixOS services host
 
 **Date:** 2026-08-22
+**Status:** Implemented 2026-08-22. Stage A and stage B complete: NFS automounts,
+sensors, telegraf writing to the LAN InfluxDB, and homelab-scrapper built from
+its own flake with sops-provided credentials. Verified after a reboot - bucket
+`pi` holds points tagged `host=pella` and the scraper reports 205 torrents every
+10s.
+
+Two findings worth carrying forward. telegraf and the scraper use *different*
+InfluxDB tokens with different bucket scopes, so reusing one for the other gives
+a 403 `insufficient permissions for write` that reads like a config bug. And a
+sops secret must declare `restartUnits`, or a rotated value lands on disk while
+the running service keeps the old one - the same 403, with nothing in the config
+to explain it. Both secrets now declare it, which also means the pending token
+rotation will apply on its own.
+
+Still open: the InfluxDB tokens are the ones Debian used and are due for
+rotation, and the root still lives on the USB stick rather than the EVO SSD.
+
+Original status line follows.
+
 **Status:** Designed. Phase 1 implemented — see
 `docs/superpowers/specs/2026-08-22-pella-nixos-phase1-design.md`
 **Host:** `pella`, Raspberry Pi 4B Rev 1.5, 4GB, `aarch64-linux`, 192.168.4.230
