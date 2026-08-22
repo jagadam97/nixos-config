@@ -153,7 +153,13 @@
           specialArgs = { inherit inputs; };
           modules = [
             sops-nix.nixosModules.sops
-            nixos-hardware.nixosModules.raspberry-pi-4
+            # nixos-hardware.nixosModules.raspberry-pi-4 is deliberately NOT
+            # used: it pins linuxPackages_rpi4, which is not in
+            # cache.nixos.org (404), so it would compile an ARM kernel plus a
+            # ZFS module under qemu emulation. The generic aarch64 kernel is
+            # cached (200) and is the standard sd-image-aarch64 path. The
+            # RPi-specific initrd modules it would have added are set by hand
+            # in hosts/pella/hardware.nix.
             ./hosts/pella
             ./modules/common
           ];
