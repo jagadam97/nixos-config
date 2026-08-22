@@ -4,67 +4,87 @@
 
 **Goal:** Stand up a new `aarch64-linux` NixOS host `pella` on the Raspberry Pi 4, replacing Raspberry Pi OS, with static networking and no DHCP client, managed from this repo.
 
-**Architecture:** Two flake outputs. `pella-installer` is a throwaway `sd-image-aarch64` written to a pendrive, used to boot the Pi headlessly. `pella` is the real system: `disko`-managed microSD with a FAT32 firmware partition, a separate ext4 `/boot` (so u-boot never has to parse btrfs), and a btrfs root with the same subvolume set as the x86 hosts. A custom activation script populates `/boot/firmware` with Raspberry Pi firmware and u-boot, replicating what `sdImage.populateFirmwareCommands` does — `nixos-hardware` does not do this.
+**Architecture:** Build a complete bootable `.raw` disk image offline with `disko`'s image builder — btrfs root, separate ext4 `/boot`, FAT32 firmware partition, all populated inside a build VM — then write it to the microSD from the macbook's built-in card reader. No installer media, no on-device partitioning, and the image can be inspected before any hardware is touched.
 
-**Tech Stack:** nixpkgs unstable, flakes, `nixos-hardware` (new input), `disko`, `sops-nix` (wired but unused in phase 1), btrfs, u-boot + extlinux, Tailscale.
+**Tech Stack:** nixpkgs unstable, flakes, `nixos-hardware` (new input), `disko` image builder with binfmt cross-build, btrfs, u-boot + extlinux, Tailscale.
 
 **Spec:** `docs/superpowers/specs/2026-08-22-pella-nixos-phase1-design.md`
 
 ---
 
+## Why this shape
+
+Three problems had to be solved together, and the offline image solves all of them:
+
+1. **The Pi cannot install to the card it is running Debian from.** An offline
+   image sidesteps this — nothing is installed on the Pi at all.
+2. **btrfs rules out `sdImage`**, which only produces ext4. `disko`'s image
+   builder has no such limit.
+3. **`nixos-hardware` does not populate `/boot/firmware`.** `disko`'s image
+   builder runs a real `nixos-install`, which runs activation scripts, so
+   `hosts/pella/firmware.nix` populates it inside the VM.
+
+Verified in `disko/lib/make-disk-image.nix`:
+
+```
+nixos-install --root "$rootMountPoint" --system <toplevel> --keep-going ...
+```
+
+`nixos-install` runs `switch-to-configuration boot`, so activation scripts and
+the bootloader installer both run during the image build.
+
+Cross-building `aarch64-linux` on x86_64 uses `disko.imageBuilder.enableBinfmt`,
+which runs the build VM with an **x86_64 kernel** and binfmt for the aarch64
+userland — not a fully emulated ARM VM.
+
 ## Note on verification style
 
 This repo has no unit test suite; it is a Nix flake. The TDD analogue used
 throughout is: **run the evaluation or build command, confirm it fails for the
-expected reason, make the change, confirm it now succeeds.** Every task below
-gives the exact command and the expected output on both sides.
+expected reason, make the change, confirm it now succeeds.** Every task gives the
+exact command and the expected output on both sides.
 
-Builds for `aarch64-linux` are emulated via `qemu-aarch64` binfmt on alienX
-(x86_64, 32 cores). `builders-use-substitutes = true` is already set, so most of
-the closure arrives prebuilt from `cache.nixos.org`.
+The single most valuable property of this plan: **Task 8 inspects the built
+image before Task 9 writes anything.** A wrong firmware partition is caught as a
+failed `ls`, not as a black screen.
 
 ## File structure
 
 | File | Responsibility |
 |---|---|
-| `flake.nix` | Modify: add `nixos-hardware` input; add `pella` and `pella-installer` outputs |
-| `hosts/pella/disko.nix` | Create: three-partition microSD layout, btrfs subvolumes |
+| `flake.nix` | Modify: add `nixos-hardware` input; add the `pella` output |
+| `hosts/pella/disko.nix` | Create: three-partition layout, btrfs subvolumes, image size/name |
 | `hosts/pella/firmware.nix` | Create: populate `/boot/firmware` with RPi firmware + u-boot + config.txt |
-| `hosts/pella/hardware.nix` | Create: platform, initrd modules, zram, boot loader |
+| `hosts/pella/hardware.nix` | Create: platform, initrd modules, zram, image-builder cross settings |
 | `hosts/pella/default.nix` | Create: hostname, user, static networking, timezone, sops stub |
-| `hosts/pella/installer.nix` | Create: throwaway sd-image with keys and static IP baked in |
 
-`firmware.nix` is deliberately its own file rather than folded into
-`hardware.nix`: it is the least certain part of this design and the most likely
-to need iteration, so it should be readable and replaceable on its own.
+`firmware.nix` is its own file because it is the least certain part of the design
+and the most likely to need iteration.
 
 ---
 
 ### Task 1: Add the `nixos-hardware` flake input
 
 **Files:**
-- Modify: `flake.nix:4-30` (the `inputs` block)
+- Modify: `flake.nix` (`inputs` block, and the `outputs` argument list)
 
 - [ ] **Step 1: Confirm the input is currently absent**
 
 Run:
 ```bash
-nix flake metadata --json 2>/dev/null | grep -c nixos-hardware || echo "absent"
+grep -c nixos-hardware flake.nix || echo "absent"
 ```
 Expected: `0` or `absent`.
 
 - [ ] **Step 2: Add the input**
 
-In `flake.nix`, inside `inputs`, after the `disko` block, add:
+In `flake.nix`, inside `inputs`, after the `disko` block:
 
 ```nix
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 ```
 
 - [ ] **Step 3: Add it to the outputs argument list**
-
-In `flake.nix`, the `outputs` function destructures its inputs. Add
-`nixos-hardware,` to that list, after `disko,`:
 
 ```nix
   outputs =
@@ -82,11 +102,12 @@ In `flake.nix`, the `outputs` function destructures its inputs. Add
     }@inputs:
 ```
 
-- [ ] **Step 4: Verify the flake still evaluates and the lock updates**
+- [ ] **Step 4: Verify the lock updates and the flake evaluates**
 
 Run:
 ```bash
-nix flake lock && nix flake metadata --json | python3 -c "import json,sys; print('nixos-hardware' in json.load(sys.stdin)['locks']['nodes'])"
+nix flake lock
+nix flake metadata --json | python3 -c "import json,sys; print('nixos-hardware' in json.load(sys.stdin)['locks']['nodes'])"
 ```
 Expected: `True`
 
@@ -114,6 +135,12 @@ device-tree filter and the extlinux boot path."
 
 **Files:**
 - Create: `hosts/pella/disko.nix`
+
+`imageSize` is set to 12G rather than the card's full 29.8G on purpose: the image
+has to be built, stored, transferred to the macbook and written over a card
+reader, and every one of those is linear in image size. btrfs is grown to fill
+the card in Task 10. disko has no auto-resize, so this is a deliberate choice,
+not an oversight.
 
 - [ ] **Step 1: Create the file**
 
@@ -149,6 +176,13 @@ in
       sd = {
         type = "disk";
         device = "/dev/mmcblk0";
+
+        # Image build settings. disko has no auto-resize, so this size is what
+        # you get until Task 10 grows btrfs to fill the real card. Keep it well
+        # under the card's 29.8G: build, transfer and dd time all scale with it.
+        imageName = "pella-aarch64-rpi4";
+        imageSize = "12G";
+
         content = {
           type = "gpt";
           partitions = {
@@ -236,22 +270,25 @@ unreliable with subvolumes.
 
 btrfs tuned for the medium: zstd:3 to leave CPU headroom for PPPoE softirq
 load later, ssd dropped as meaningless on microSD, discard=async added
-since the card reports discard support."
+since the card reports discard support.
+
+imageSize is 12G rather than the card's 29.8G because build, transfer and
+dd time all scale with it; btrfs gets grown to fill the card after first
+boot since disko has no auto-resize."
 ```
 
 ---
 
 ### Task 3: Populate the Raspberry Pi firmware partition
 
-This is the task that makes the difference between a booting Pi and a black
-screen. `nixos-hardware`'s `raspberry-pi-4` module sets the extlinux boot path
-but explicitly does **not** manage the firmware partition or `config.txt`.
-`sdImage` does it via `populateFirmwareCommands`; a `disko` install has no
-equivalent, so we replicate it as an activation script.
+`nixos-hardware`'s `raspberry-pi-4` module sets the extlinux boot path but
+explicitly does **not** manage the firmware partition or `config.txt`. The file
+list and `config.txt` below are taken from nixpkgs'
+`nixos/modules/installer/sd-card/sd-image-aarch64.nix`, reduced to the Pi 4 files.
 
-The file list and `config.txt` contents below are taken from
-`nixos/modules/installer/sd-card/sd-image-aarch64.nix` in nixpkgs, reduced to
-the Pi 4 files only.
+This runs as an activation script, so it executes during the image build (via
+`nixos-install`) *and* on every later `nixos-rebuild` — meaning firmware and
+u-boot track nixpkgs rather than being frozen at install time.
 
 **Files:**
 - Create: `hosts/pella/firmware.nix`
@@ -266,9 +303,9 @@ the Pi 4 files only.
 #
 # nixos-hardware's raspberry-pi-4 module sets up the extlinux side but does not
 # touch the firmware partition. sd-image-aarch64.nix does this via
-# sdImage.populateFirmwareCommands, which a disko install never runs - so we do
-# it here on every activation instead. That also means firmware and u-boot track
-# nixpkgs across rebuilds rather than drifting from whatever was installed once.
+# sdImage.populateFirmwareCommands, which we never run - so we do it here as an
+# activation script instead. disko's image builder runs a real nixos-install,
+# which runs activation, so this executes during the image build too.
 { config, lib, pkgs, ... }:
 
 let
@@ -293,7 +330,7 @@ let
   '';
 
   # Pi 4 only. The upstream sd-image ships Pi 3 and Pi 5 files too; this host is
-  # a Pi 4B Rev 1.5 and carrying the rest would just be noise on a 512M partition.
+  # a Pi 4B Rev 1.5 and the rest would just be noise on a 512M partition.
   firmware = pkgs.runCommand "pella-rpi-firmware" { } ''
     mkdir -p $out
     cp ${pkgs.raspberrypifw}/share/raspberrypi/boot/bootcode.bin $out/
@@ -322,8 +359,8 @@ in
     '';
   };
 
-  # rsync is only needed by the activation script above, but having it on PATH
-  # makes debugging the firmware partition by hand much easier.
+  # Only the activation script needs rsync, but having it on PATH makes
+  # debugging the firmware partition by hand much easier.
   environment.systemPackages = [ pkgs.rsync ];
 }
 ```
@@ -343,18 +380,21 @@ git add hosts/pella/firmware.nix
 git commit -m "feat(pella): populate /boot/firmware with RPi firmware and u-boot
 
 nixos-hardware's raspberry-pi-4 module sets up extlinux but does not touch
-the firmware partition, and disko installs never run
-sdImage.populateFirmwareCommands. Without this the SoC has nothing to load
-and the Pi boots to a black screen.
+the firmware partition. Without this the SoC has nothing to load and the Pi
+boots to a black screen.
 
-File list and config.txt are lifted from nixpkgs'
-sd-image-aarch64.nix, reduced to the Pi 4 files. Runs on every activation
-so firmware and u-boot track nixpkgs instead of drifting."
+File list and config.txt are lifted from nixpkgs' sd-image-aarch64.nix,
+reduced to the Pi 4 files. As an activation script it runs both inside
+disko's image-build VM and on every later rebuild, so firmware and u-boot
+track nixpkgs instead of being frozen at install time."
 ```
 
 ---
 
 ### Task 4: Create the hardware configuration
+
+This file also carries the image-builder cross-compile settings, because they are
+a property of how this host's image gets built on x86_64 hardware.
 
 **Files:**
 - Create: `hosts/pella/hardware.nix`
@@ -373,11 +413,22 @@ so firmware and u-boot track nixpkgs instead of drifting."
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }:
 
 {
-  nixpkgs.hostPlatform = lib.mkDefault "aarch64-linux";
+  nixpkgs.hostPlatform = "aarch64-linux";
+
+  # Build the disk image on x86_64 using binfmt for the aarch64 userland. The
+  # build VM runs an x86_64 kernel, so this is not a fully emulated ARM VM -
+  # only userland instructions go through qemu. Both remote builders (alienX,
+  # nauvoo) are x86_64 with qemu-aarch64 registered.
+  disko.imageBuilder = {
+    enableBinfmt = true;
+    pkgs = inputs.nixpkgs.legacyPackages.x86_64-linux;
+    kernelPackages = inputs.nixpkgs.legacyPackages.x86_64-linux.linuxPackages_latest;
+  };
 
   # mmc_block for the internal microSD; the usb/xhci set so a USB-attached root
   # stays possible without an initrd rebuild (a USB SSD is the intended
@@ -417,6 +468,10 @@ so firmware and u-boot track nixpkgs instead of drifting."
 }
 ```
 
+Note `nixpkgs.hostPlatform` is a plain assignment, not `lib.mkDefault`. The disko
+image-builder docs set it directly, and `mkDefault` risks the cross-build
+settings and the platform disagreeing.
+
 - [ ] **Step 2: Verify it parses**
 
 Run:
@@ -433,29 +488,33 @@ git commit -m "feat(pella): add hardware config for the Pi 4
 
 aarch64 platform, initrd modules for the internal microSD plus USB/uas so a
 USB root stays possible later, and zram to match what Debian ran on this
-4GB board."
+4GB board.
+
+Also carries disko.imageBuilder cross settings: the image is built on
+x86_64 with an x86_64 kernel plus binfmt for the aarch64 userland, so only
+userland instructions go through qemu."
 ```
 
 ---
 
 ### Task 5: Create the host configuration
 
+Two things to know before writing this file:
+
+1. `modules/common/ssh.nix` computes `PasswordAuthentication = !isKayda`, a
+   hostname comparison. Every host that is not `kayda` gets password auth
+   **enabled**. Unacceptable for a box destined to be an internet-facing
+   gateway, so this host forces it off. The shared module is left alone so no
+   other host's behaviour changes.
+2. `modules/common/nix-settings.nix:10` sets
+   `extra-platforms = [ "i686-linux" "aarch64-linux" ]`. Meaningful on the
+   x86_64 hosts, false on this one.
+
 **Files:**
 - Create: `hosts/pella/default.nix`
+- Create: `hosts/pella/secrets.yaml`
 
-Two things worth knowing before writing this file:
-
-1. `modules/common/ssh.nix` computes `PasswordAuthentication = !isKayda`, where
-   `isKayda` is a hostname comparison. For any host that is not `kayda` that
-   evaluates to **true** — password auth enabled. That is wrong for a box
-   destined to be an internet-facing gateway, so this host overrides it with
-   `mkForce`. The shared module is left alone so no other host's behaviour changes.
-2. `modules/common/nix-settings.nix:10` sets
-   `extra-platforms = [ "i686-linux" "aarch64-linux" ]`. On the x86_64 hosts that
-   enables emulated aarch64 builds. On an aarch64 host it advertises an
-   `i686-linux` capability the Pi does not have, so it is overridden here.
-
-- [ ] **Step 1: Create the file**
+- [ ] **Step 1: Create `hosts/pella/default.nix`**
 
 ```nix
 # pella - Raspberry Pi 4 router (phase 1: NixOS only, no routing yet)
@@ -529,16 +588,16 @@ Two things worth knowing before writing this file:
   system.stateVersion = "26.11";
 
   # No secrets are used in phase 1. The age key derives from this host's SSH
-  # host key, which does not exist until first boot, so .sops.yaml and
-  # hosts/pella/secrets.yaml come after the box is up - before phase 2, which
-  # needs PPPoE credentials stored.
+  # host key, which does not exist until first boot, so .sops.yaml and a real
+  # secrets.yaml come after the box is up - before phase 2, which needs PPPoE
+  # credentials stored.
   sops.defaultSopsFile = ./secrets.yaml;
   sops.defaultSopsFormat = "yaml";
   sops.age.keyFile = "/var/lib/sops-nix/keys.txt";
 }
 ```
 
-- [ ] **Step 2: Create a placeholder secrets file so the sops options resolve**
+- [ ] **Step 2: Create the placeholder secrets file**
 
 `sops.defaultSopsFile` points at a path that must exist at evaluation time.
 
@@ -568,8 +627,7 @@ in phase 1.
 Two overrides of shared modules, both deliberate:
 - modules/common/ssh.nix enables password auth for any host that is not
   kayda; forced off here since this becomes an internet-facing gateway.
-- modules/common/nix-settings.nix advertises i686-linux, which is false on
-  aarch64.
+- modules/common/nix-settings.nix advertises i686-linux, false on aarch64.
 
 eth1 (the UE300) is left unconfigured - it becomes the PPPoE WAN in phase 2."
 ```
@@ -579,7 +637,7 @@ eth1 (the UE300) is left unconfigured - it becomes the PPPoE WAN in phase 2."
 ### Task 6: Wire up the `pella` flake output
 
 **Files:**
-- Modify: `flake.nix` (`nixosConfigurations` block, after the `kayda` entry)
+- Modify: `flake.nix` (`nixosConfigurations`, after the `kayda` entry)
 
 - [ ] **Step 1: Confirm the output does not exist yet**
 
@@ -587,12 +645,9 @@ Run:
 ```bash
 nix eval .#nixosConfigurations.pella.config.networking.hostName 2>&1 | tail -1
 ```
-Expected: an error mentioning that attribute `pella` is missing.
+Expected: an error saying attribute `pella` is missing.
 
 - [ ] **Step 2: Add the output**
-
-In `flake.nix`, inside `nixosConfigurations`, after the closing `};` of the
-`kayda` entry, add:
 
 ```nix
         # Pella - Raspberry Pi 4 router (phase 1: NixOS only, routing is phase 2)
@@ -609,10 +664,10 @@ In `flake.nix`, inside `nixosConfigurations`, after the closing `};` of the
         };
 ```
 
-Note there is deliberately **no** home-manager here: it roughly doubles an
-emulated aarch64 build for no phase-1 benefit and can be added later.
+There is deliberately **no** home-manager: it roughly doubles the build for no
+phase-1 benefit and can be added later.
 
-- [ ] **Step 3: Verify the output now evaluates**
+- [ ] **Step 3: Verify the output evaluates**
 
 Run:
 ```bash
@@ -620,7 +675,7 @@ nix eval .#nixosConfigurations.pella.config.networking.hostName
 ```
 Expected: `"pella"`
 
-- [ ] **Step 4: Verify the platform and key settings resolved correctly**
+- [ ] **Step 4: Verify platform and overrides resolved**
 
 Run:
 ```bash
@@ -631,397 +686,306 @@ nix eval .#nixosConfigurations.pella.config.boot.loader.generic-extlinux-compati
 ```
 Expected, in order: `"aarch64-linux"` · `[ ]` · `false` · `true`
 
-The last one confirms `nixos-hardware`'s `raspberry-pi-4` module is actually
-applying the extlinux boot path.
+The last confirms `nixos-hardware`'s `raspberry-pi-4` module is applying.
 
-- [ ] **Step 5: Verify the disko layout produced the three filesystems**
+- [ ] **Step 5: Verify the three filesystems and btrfs options**
 
 Run:
 ```bash
 nix eval --json .#nixosConfigurations.pella.config.fileSystems --apply 'fs: builtins.attrNames fs'
-```
-Expected: a list containing `"/"`, `"/boot"`, `"/boot/firmware"`, `"/home"`, `"/nix"`, `"/var/lib"`, `"/var/log"`
-
-- [ ] **Step 6: Verify the btrfs mount options**
-
-Run:
-```bash
 nix eval --json .#nixosConfigurations.pella.config.fileSystems."/".options
+nix eval --json .#nixosConfigurations.pella.config.fileSystems."/boot".fsType
+nix eval --json .#nixosConfigurations.pella.config.fileSystems."/boot/firmware".fsType
 ```
-Expected: includes `"compress=zstd:3"`, `"noatime"`, `"discard=async"`, and **not** `"ssd"`
+Expected: a list containing `"/"`, `"/boot"`, `"/boot/firmware"`, `"/home"`,
+`"/nix"`, `"/var/lib"`, `"/var/log"`; then options containing
+`"compress=zstd:3"`, `"noatime"`, `"discard=async"` and **not** `"ssd"`; then
+`"ext4"`; then `"vfat"`.
 
-- [ ] **Step 7: Verify the whole system closure instantiates**
+- [ ] **Step 6: Verify the image derivation instantiates**
 
 Run:
 ```bash
-nix eval .#nixosConfigurations.pella.config.system.build.toplevel.drvPath
+nix eval .#nixosConfigurations.pella.config.system.build.diskoImages.drvPath
 ```
-Expected: a `/nix/store/...-nixos-system-pella-....drv` path.
+Expected: a `/nix/store/...drv` path.
 
-This is evaluation only — nothing is built yet.
+If this errors with an unknown attribute, `disko.nixosModules.disko` is not
+imported or the disko input is too old to have the image builder.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add flake.nix
 git commit -m "feat(pella): wire the pella nixosConfiguration
 
 aarch64-linux with nixos-hardware's raspberry-pi-4 module. No home-manager:
-it roughly doubles an emulated aarch64 build for no phase-1 value."
+it roughly doubles the build for no phase-1 value."
 ```
 
 ---
 
-### Task 7: Create and wire the installer image
+### Task 7: Build the disk image
 
-The installer exists for one reason: the Pi cannot install NixOS to the microSD
-it is currently running Debian from. It boots from the pendrive instead. Its own
-root is ext4 because `sdImage` cannot produce btrfs — irrelevant, since it is
-discarded.
+**Files:** none — build and verification.
 
-SSH keys and the static IP are baked in so the whole install is headless.
-
-**Files:**
-- Create: `hosts/pella/installer.nix`
-- Modify: `flake.nix` (`nixosConfigurations` block)
-
-- [ ] **Step 1: Create the installer config**
-
-```nix
-# Throwaway installer image for pella.
-#
-# Written to the SanDisk pendrive (/dev/sda), booted with BOOT_ORDER=0xf14, and
-# used to disko + nixos-install onto the internal microSD. Discarded afterwards.
-#
-# Its root is ext4 because sdImage cannot produce btrfs. That does not matter:
-# nothing here survives.
-#
-# SSH keys and the static IP are baked in so no keyboard or monitor is ever
-# needed. Same address as Debian and as the final system - only one of the three
-# ever runs at a time.
-{
-  config,
-  lib,
-  pkgs,
-  modulesPath,
-  ...
-}:
-
-{
-  imports = [
-    (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
-  ];
-
-  networking.hostName = "pella-installer";
-
-  # Uncompressed so it can be streamed straight to the pendrive with dd; the
-  # default zstd image would need decompressing first.
-  sdImage.compressImage = false;
-
-  networking.useDHCP = false;
-  networking.interfaces.eth0.ipv4.addresses = [
-    {
-      address = "192.168.4.230";
-      prefixLength = 24;
-    }
-  ];
-  networking.defaultGateway = "192.168.4.1";
-  networking.nameservers = [ "192.168.4.1" ];
-
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      PermitRootLogin = "prohibit-password";
-    };
-  };
-
-  # Root login by key: the install runs disko and nixos-install, both of which
-  # need root, and this image is thrown away immediately afterwards.
-  users.users.root.openssh.authorizedKeys.keys = [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII0PaRuEIaOKCyD0C/MNT00ZSjCFC+K2LpNzMIDOacd2 dinesh.reddy@macbook"
-    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDXs8gealQWXMlEN++Ew7V4EqUFf7Cd+Pnr06ZqtYtdO+SYmA4fdmc9qz5/GI2JJnzs0+sHak4ZCtUihYWN3raeFy/zubKDcycZI44Lcy5SjJhfprg/c/XAags3GuZEnzhlXuqS6Uzeljgps+6gx7eiSHM/tFFV2T3kOoisq0z7kDqsi6Aq1tblMoHyvvUBPjO1huRiqcECrNFA4SnqJMVtspvIpLN74O568NDkc40ZQtcDbdbjZgfRpXx+xVWwO4gGwbrqrAZ8llItrQsGtmC6WoH8c+CUMguJqn7T4cb9nzvbFDDQLKga3DKWqZjnjwAz9lkENfPMWiZeW7kw/Yte99TCDxEm3YGfa6v/QH9JggCscSRg1Zf1UZ3VlEVXev7QvOD16DfDKeCa0z6bfvle6VUi64jVZVYAILdpGFFzrJ18L/ttZdWZYwKIXp18lcWjyGWJDsY6OcdR3XGtI5k4ey8UVa384V5pl36bP1KpD0VN6oAvHWszluHdVpZR4Gk= dines@Optimus"
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIg3tJuOvpBMqDvBjBrq5KxkE5ZiK/Dlr28uSSm1mx7U"
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHMJ9s1gDUT9aJaLTGDH4gdXAXjbfoBHJYLd9aSxI9qQ jagadam97@razorback"
-  ];
-
-  # Everything the install needs. sd-image-aarch64 is not an installer profile,
-  # so nixos-install-tools is not present by default.
-  environment.systemPackages = with pkgs; [
-    nixos-install-tools
-    btrfs-progs
-    dosfstools
-    e2fsprogs
-    gptfdisk
-    parted
-    rsync
-    git
-    tmux
-  ];
-
-  # The installer builds nothing itself - it receives a prebuilt closure copied
-  # from alienX - but flakes must be enabled for nixos-install --flake to work
-  # if we ever fall back to that.
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
-
-  # nixos-install writes the whole closure to /mnt; the default sd-image tmpfs
-  # sizing is not the constraint, but this keeps builds off RAM on a 4GB board.
-  nix.settings.max-jobs = 2;
-
-  system.stateVersion = "26.11";
-}
-```
-
-- [ ] **Step 2: Add the flake output**
-
-In `flake.nix`, inside `nixosConfigurations`, after the `pella` entry:
-
-```nix
-        # Throwaway installer image for pella, written to the pendrive.
-        pella-installer = nixpkgs.lib.nixosSystem {
-          system = "aarch64-linux";
-          specialArgs = { inherit inputs; };
-          modules = [
-            ./hosts/pella/installer.nix
-          ];
-        };
-```
-
-Note `nixos-hardware` is deliberately not imported here — `sd-image-aarch64.nix`
-already sets up its own boot path, and adding the RPi4 module on top risks a
-conflicting kernel choice in an image whose only job is to boot once.
-
-- [ ] **Step 3: Verify the installer output evaluates**
+- [ ] **Step 1: Confirm alienX is reachable and has aarch64 binfmt**
 
 Run:
 ```bash
-nix eval .#nixosConfigurations.pella-installer.config.networking.hostName
-nix eval .#nixosConfigurations.pella-installer.config.sdImage.compressImage
+ssh dj@alienx.owl-coho.ts.net 'uname -m; nproc; ls /proc/sys/fs/binfmt_misc/ | grep qemu-aarch64'
 ```
-Expected: `"pella-installer"` then `false`
+Expected: `x86_64`, `32`, `qemu-aarch64`.
 
-- [ ] **Step 4: Verify the image derivation instantiates**
+- [ ] **Step 2: Build the system closure first**
+
+Building the closure separately means a config error surfaces before the longer
+image build, and gives a cleaner error if something is wrong.
 
 Run:
 ```bash
-nix eval .#nixosConfigurations.pella-installer.config.system.build.sdImage.drvPath
-```
-Expected: a `/nix/store/...-nixos-sd-image-....img.drv` path.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add hosts/pella/installer.nix flake.nix
-git commit -m "feat(pella): add throwaway installer image
-
-The Pi cannot install to the microSD it is running Debian from, so it boots
-this from the pendrive instead. SSH keys and the static IP are baked in so
-the whole install is headless.
-
-Uncompressed image so it can be dd'd straight to the pendrive, and
-nixos-install-tools included since sd-image-aarch64 is not an installer
-profile."
-```
-
----
-
-### Task 8: Build both images on alienX
-
-**Files:** none — this is a build and verification task.
-
-- [ ] **Step 1: Confirm alienX is reachable and advertises aarch64**
-
-Run:
-```bash
-ssh dj@alienx.owl-coho.ts.net 'uname -m; ls /proc/sys/fs/binfmt_misc/ | grep qemu-aarch64'
-```
-Expected: `x86_64` then `qemu-aarch64`.
-
-The build is emulated. That is expected and acceptable — `aarch64-linux` has
-full `cache.nixos.org` coverage and `builders-use-substitutes` is already on, so
-only uncached derivations get emulated.
-
-- [ ] **Step 2: Build the installer image**
-
-Run:
-```bash
-nix build .#nixosConfigurations.pella-installer.config.system.build.sdImage \
-  --print-out-paths -L
-```
-Expected: a `/nix/store/...-nixos-sd-image-...-aarch64-linux.img/` path.
-
-If this fails with a hash mismatch or a `qemu` segfault on a specific
-derivation, retry once — emulated builds occasionally fault non-deterministically.
-
-- [ ] **Step 3: Record the image path and size**
-
-Run:
-```bash
-IMG=$(find "$(nix build .#nixosConfigurations.pella-installer.config.system.build.sdImage --print-out-paths)" -name '*.img' | head -1)
-echo "$IMG"; ls -lh "$IMG"
-```
-Expected: a path ending `.img` and a size in the low single-digit GB.
-
-- [ ] **Step 4: Build the real system closure**
-
-Run:
-```bash
-nix build .#nixosConfigurations.pella.config.system.build.toplevel \
-  --print-out-paths -L
+nix build .#nixosConfigurations.pella.config.system.build.toplevel --print-out-paths -L
 ```
 Expected: a `/nix/store/...-nixos-system-pella-...` path.
 
-This is the closure that gets copied to the installer in Task 11 — building it
-now means the destructive step later is not also the first time this config has
-ever been compiled.
-
-- [ ] **Step 5: Verify the firmware derivation built and contains what it should**
+- [ ] **Step 3: Verify the firmware derivation contains a bootable payload**
 
 Run:
 ```bash
-FW=$(nix build --no-link --print-out-paths \
-  .#nixosConfigurations.pella.config.system.activationScripts.pellaRpiFirmware.text 2>/dev/null) || \
 FW=$(nix eval --raw .#nixosConfigurations.pella.config.system.activationScripts.pellaRpiFirmware.text \
   | grep -oE '/nix/store/[a-z0-9]{32}-pella-rpi-firmware' | head -1)
 echo "firmware derivation: $FW"
 nix build --no-link "$FW"
 ls "$FW"
 ```
-Expected: `armstub8-gic.bin`, `bcm2711-rpi-4-b.dtb`, `bootcode.bin`, `config.txt`, `fixup*.dat`, `start*.elf`, `u-boot.bin`
+Expected: `armstub8-gic.bin`, `bcm2711-rpi-4-b.dtb`, `bootcode.bin`,
+`config.txt`, `fixup*.dat`, `start*.elf`, `u-boot.bin`.
 
-If `u-boot.bin` or `armstub8-gic.bin` is missing, the Pi will not boot. Stop and
-fix Task 3 before going any further.
+If `u-boot.bin` or `armstub8-gic.bin` is missing, stop and fix Task 3. Nothing
+downstream can boot without them.
 
-- [ ] **Step 6: Commit nothing, but record the paths**
+- [ ] **Step 4: Build the image**
 
-Write both store paths into the plan checklist or a scratch note. They are needed
-in Tasks 9 and 11.
+Run:
+```bash
+nix build .#nixosConfigurations.pella.config.system.build.diskoImages --print-out-paths -L
+```
+Expected: a store path containing `pella-aarch64-rpi4.raw`.
+
+This runs a VM that partitions a 12G file, makes the filesystems and runs
+`nixos-install`. Budget 20-60 minutes. If it fails on memory, use the script
+variant instead, which takes a memory flag:
+
+```bash
+nix build .#nixosConfigurations.pella.config.system.build.diskoImagesScript
+sudo ./result --build-memory 4096
+```
+
+- [ ] **Step 5: Record the image path**
+
+Run:
+```bash
+IMG=$(find "$(nix build --no-link --print-out-paths .#nixosConfigurations.pella.config.system.build.diskoImages)" -name '*.raw' | head -1)
+echo "$IMG"; ls -lh "$IMG"
+```
+Expected: a `.raw` path, 12G apparent size.
 
 ---
 
-### Task 9: Write the installer to the pendrive
+### Task 8: Inspect the image before writing it
 
-> **Destructive step.** This overwrites `/dev/sda`, the SanDisk pendrive
-> (`0781:55a9`, 114.6GB), which currently holds an installer ISO (an 807MB
-> partition, an 8.3MB EFI partition and a 300K partition). That content will be
-> destroyed. The internal microSD `/dev/mmcblk0` is **not** touched by this task
-> and Debian keeps running.
+This task is the whole reason for the offline-image approach. Every failure mode
+that would previously have shown up as a black screen is caught here, with the
+card untouched.
 
 **Files:** none.
 
-- [ ] **Step 1: Confirm the target device is the pendrive and not the microSD**
+- [ ] **Step 1: Confirm the partition table and layout**
+
+Run on alienX (loop mounting needs Linux):
+```bash
+ssh dj@alienx.owl-coho.ts.net "sudo sfdisk -l '$IMG'"
+```
+Expected: GPT with three partitions in this order — ~512M FAT, ~1G Linux
+filesystem, remainder Linux filesystem.
+
+**If the order is wrong** (1G ext4 first), the `priority` values in
+`hosts/pella/disko.nix` did not apply. Fix Task 2 and rebuild.
+
+- [ ] **Step 2: Attach the image to a loop device**
 
 Run:
 ```bash
-ssh pi@192.168.4.230 'lsblk -o NAME,SIZE,TYPE,TRAN,MODEL,SERIAL /dev/sda'
+ssh dj@alienx.owl-coho.ts.net "sudo losetup --show -Pf '$IMG'"
 ```
-Expected: `sda 114.6G disk usb SanDisk 3.2Gen1 00022511072824223236`
+Expected: a device name like `/dev/loop0`. Note it; the partitions appear as
+`/dev/loop0p1`, `p2`, `p3`.
 
-If this shows anything other than the 114.6G SanDisk, **stop**. Do not proceed
-on a guessed device name.
+- [ ] **Step 3: Verify the firmware partition — the critical check**
 
-- [ ] **Step 2: Confirm nothing on the pendrive is mounted**
+Run, substituting the loop device:
+```bash
+ssh dj@alienx.owl-coho.ts.net '
+  sudo mkdir -p /mnt/pella-fw
+  sudo mount /dev/loop0p1 /mnt/pella-fw
+  ls -la /mnt/pella-fw
+  echo "--- config.txt ---"
+  cat /mnt/pella-fw/config.txt
+  sudo umount /mnt/pella-fw
+'
+```
+Expected: `bootcode.bin`, `config.txt`, `start4.elf`, `fixup4.dat`,
+`u-boot.bin`, `armstub8-gic.bin`, `bcm2711-rpi-4-b.dtb`, `.pella-firmware`; and
+`config.txt` containing `kernel=u-boot.bin` and `arm_64bit=1`.
+
+**If `u-boot.bin` is absent**, the activation script did not run during
+`nixos-install`. Do not write this image. See Contingencies.
+
+- [ ] **Step 4: Verify `/boot` has extlinux and a kernel that exists**
 
 Run:
 ```bash
-ssh pi@192.168.4.230 'findmnt -n -o TARGET,SOURCE | grep /dev/sda || echo "not mounted"'
+ssh dj@alienx.owl-coho.ts.net '
+  sudo mkdir -p /mnt/pella-boot
+  sudo mount /dev/loop0p2 /mnt/pella-boot
+  cat /mnt/pella-boot/extlinux/extlinux.conf
+  echo "--- resolving referenced files ---"
+  awk "/^[[:space:]]*(LINUX|INITRD)/ {print \$2}" /mnt/pella-boot/extlinux/extlinux.conf \
+    | while read f; do ls -l "/mnt/pella-boot/$f" 2>&1; done
+  sudo umount /mnt/pella-boot
+'
 ```
-Expected: `not mounted`
+Expected: an `extlinux.conf` with at least one `LABEL` block, and every `LINUX`
+and `INITRD` path resolving to a real file. A "No such file" means the Pi will
+drop to a u-boot prompt.
 
-If anything is mounted, unmount it first: `sudo umount /dev/sda?`
-
-- [ ] **Step 3: Stream the image to the pendrive**
-
-Run from the machine holding the built image:
-```bash
-IMG=$(find "$(nix build .#nixosConfigurations.pella-installer.config.system.build.sdImage --print-out-paths)" -name '*.img' | head -1)
-dd if="$IMG" bs=4M status=progress | ssh pi@192.168.4.230 'sudo dd of=/dev/sda bs=4M conv=fsync status=progress'
-```
-Expected: `dd` progress output on both ends, ending with matching byte counts.
-
-The pendrive measured 8.4 MB/s buffered read and writes will be slower, so budget
-**10-20 minutes** for a multi-GB image. This is expected, not a hang.
-
-- [ ] **Step 4: Flush and verify the partition table was written**
+- [ ] **Step 5: Verify the btrfs root, subvolumes and compression**
 
 Run:
 ```bash
-ssh pi@192.168.4.230 'sudo sync; sudo blockdev --rereadpt /dev/sda; lsblk /dev/sda; sudo fdisk -l /dev/sda | head -12'
+ssh dj@alienx.owl-coho.ts.net '
+  sudo mkdir -p /mnt/pella-root
+  sudo mount -o subvol=@root /dev/loop0p3 /mnt/pella-root
+  echo "--- subvolumes ---"; sudo btrfs subvolume list /mnt/pella-root
+  echo "--- os-release ---"; cat /mnt/pella-root/etc/os-release | head -3
+  echo "--- hostname ---";   cat /mnt/pella-root/etc/hostname 2>/dev/null
+  echo "--- fstab ---";      cat /mnt/pella-root/etc/fstab
+  sudo umount /mnt/pella-root
+'
 ```
-Expected: `sda` now shows a small FAT firmware partition and a larger Linux
-partition, and the partition table is `dos` (nixpkgs `sdImage` uses MBR).
+Expected: five subvolumes (`@root @nix @home @varlib @log`), NixOS in
+`os-release`, `pella` as the hostname, and an `fstab` whose btrfs entries carry
+`compress=zstd:3` and `discard=async`.
 
-- [ ] **Step 5: Verify the firmware partition contains a bootable payload**
+- [ ] **Step 6: Detach the loop device**
 
 Run:
 ```bash
-ssh pi@192.168.4.230 'sudo mkdir -p /mnt/fw && sudo mount /dev/sda1 /mnt/fw && ls /mnt/fw && sudo umount /mnt/fw'
+ssh dj@alienx.owl-coho.ts.net 'sudo losetup -d /dev/loop0; losetup -a'
 ```
-Expected: `bootcode.bin`, `config.txt`, `start4.elf`, `fixup4.dat`, `u-boot.bin`,
-`armstub8-gic.bin`, and `bcm2711-rpi-4-b.dtb` among others.
+Expected: the device no longer listed.
 
-If `u-boot.bin` is absent the Pi will not boot from this drive. Stop here.
+- [ ] **Step 7: Copy the image to the macbook**
+
+Run:
+```bash
+scp dj@alienx.owl-coho.ts.net:"$IMG" /tmp/pella-aarch64-rpi4.raw
+ls -lh /tmp/pella-aarch64-rpi4.raw
+```
+Expected: the file present locally. If the image is on the local machine already,
+skip this.
 
 ---
 
-### Task 10: Boot the installer and pass the validation gate
+### Task 9: Write the image to the microSD
 
-> This is the **hard stop** before anything destroys Debian. Everything up to
-> here is reversible by flipping `BOOT_ORDER` back. Do not proceed to Task 11
-> until every check below passes.
+> **Destructive step.** This overwrites the Pi's 29.8GB microSD and destroys the
+> Debian installation, including `homelab-scrapper`, `wol-server` and
+> `/etc/wol-server/config.toml`, the telegraf config, and the NFS export setup.
+> The user confirmed on 2026-08-22 that no backup is required.
+>
+> Do not run this until Task 8 passed every check.
 
 **Files:** none.
 
-- [ ] **Step 1: Set the boot order to prefer USB**
+- [ ] **Step 1: Shut the Pi down cleanly and remove the card**
 
 Run:
 ```bash
-ssh pi@192.168.4.230 'sudo rpi-eeprom-config > /tmp/eeprom.txt && printf "BOOT_ORDER=0xf14\n" >> /tmp/eeprom.txt && sudo rpi-eeprom-config --apply /tmp/eeprom.txt && sudo rpi-eeprom-config'
+ssh pi@192.168.4.230 'sudo poweroff' || true
 ```
-Expected: the printed config now contains `BOOT_ORDER=0xf14` alongside the
-existing `BOOT_UART=0`, `WAKE_ON_GPIO=1`, `POWER_OFF_ON_HALT=0`.
+Wait for it to power down, then remove the microSD and insert it into the
+macbook's built-in reader.
 
-`0xf14` reads right to left: try USB (4), then SD (1), then restart (f). Debian
-on the microSD remains the fallback.
-
-- [ ] **Step 2: Reboot**
+- [ ] **Step 2: Identify the card — carefully**
 
 Run:
 ```bash
-ssh pi@192.168.4.230 'sudo reboot' || true
+diskutil list external physical
 ```
-Expected: the connection drops. Wait 2-4 minutes — booting from an 8.4 MB/s
-pendrive is slow.
+Expected: one entry around 31.9 GB. Note its identifier, e.g. `/dev/disk4`.
 
-- [ ] **Step 3: Confirm it came up as the installer, not Debian**
+**Verify the size before continuing.** Writing to the wrong `/dev/diskN` on a
+mac will destroy an internal volume. If more than one external disk is listed,
+unplug the others.
 
-Run:
+- [ ] **Step 3: Unmount it (do not eject)**
+
+Run, substituting the identifier:
 ```bash
-ssh root@192.168.4.230 'hostname; uname -a; cat /etc/os-release | head -2'
+diskutil unmountDisk /dev/disk4
 ```
-Expected: hostname `pella-installer`, a `#1-NixOS` kernel string, and
-`NAME=NixOS`.
+Expected: `Unmount of all volumes on disk4 was successful`.
 
-If you get `pi` and Debian instead, the Pi fell through to the SD card — the
-pendrive did not boot. Go back to Task 9 Step 5.
+- [ ] **Step 4: Write the image**
 
-- [ ] **Step 4: Confirm it is running from the pendrive and the microSD is untouched**
-
-Run:
+Run, substituting the identifier. Note `rdisk` rather than `disk` — the raw
+device is dramatically faster on macOS:
 ```bash
-ssh root@192.168.4.230 'findmnt / -o SOURCE; lsblk -o NAME,SIZE,TYPE,TRAN,MOUNTPOINT'
+sudo dd if=/tmp/pella-aarch64-rpi4.raw of=/dev/rdisk4 bs=4m status=progress
 ```
-Expected: `/` is on an `/dev/sda` partition, and `mmcblk0` appears with its
-original 512M + 29.3G partitions, unmounted.
+Expected: 12 GB written, ending with a byte count and a transfer rate.
 
-- [ ] **Step 5: Run the validation gate**
+Budget 5-20 minutes depending on the card. `status=progress` needs a recent
+`dd`; if unsupported, drop it and press Ctrl-T to poll progress.
+
+- [ ] **Step 5: Flush and eject**
 
 Run:
 ```bash
-ssh root@192.168.4.230 '
+sync
+diskutil eject /dev/disk4
+```
+Expected: `Disk /dev/disk4 ejected`.
+
+- [ ] **Step 6: Reinstall the card and power on**
+
+Put the microSD back in the Pi and apply power. First boot has to generate SSH
+host keys and start Tailscale, so allow 2-3 minutes.
+
+---
+
+### Task 10: Confirm the system and grow btrfs to fill the card
+
+**Files:** none.
+
+- [ ] **Step 1: Confirm it booted**
+
+Run:
+```bash
+ssh jagadam97@192.168.4.230 'hostname; uname -m; findmnt / -o SOURCE,FSTYPE'
+```
+Expected: `pella`, `aarch64`, `/dev/mmcblk0p3` with `btrfs`.
+
+If SSH does not answer after 3 minutes, see Contingencies.
+
+- [ ] **Step 2: Run the acceptance checks**
+
+Run:
+```bash
+ssh jagadam97@192.168.4.230 '
+  echo "--- mounts ---";    findmnt -R / -o TARGET,SOURCE,FSTYPE,OPTIONS | grep -E "btrfs|vfat|ext4"
+  echo "--- subvols ---";   sudo btrfs subvolume list /
   echo "--- addr ---";      ip -br addr show eth0
   echo "--- route ---";     ip route | head -3
   echo "--- no dhcp ---";   (pgrep -a dhcpcd || pgrep -a dhclient || echo "no dhcp client")
@@ -1029,254 +993,89 @@ ssh root@192.168.4.230 '
   echo "--- errors ---";    journalctl -p err -b --no-pager | tail -20
 '
 ```
-Expected:
-- `eth0` carries `192.168.4.230/24`
-- default route via `192.168.4.1`
-- `no dhcp client`
-- `eth1` present, and `lsusb -t` shows `r8152` at **5000M**
-- no storage or network errors in the journal
+Expected: three filesystems mounted as designed with `compress=zstd:3` and
+`discard=async`; five subvolumes; `eth0` = `192.168.4.230/24`; default route via
+`192.168.4.1`; `no dhcp client`; `eth1` present with `r8152` at **5000M**; no
+errors in the journal.
 
-- [ ] **Step 6: Confirm outbound networking works**
+- [ ] **Step 3: Confirm outbound networking**
 
 Run:
 ```bash
-ssh root@192.168.4.230 'ping -c2 -W3 1.1.1.1 && curl -sS -o /dev/null -w "%{http_code}\n" https://cache.nixos.org/nix-cache-info'
+ssh jagadam97@192.168.4.230 'ping -c2 -W3 1.1.1.1 && curl -sS -o /dev/null -w "%{http_code}\n" https://cache.nixos.org/nix-cache-info'
 ```
-Expected: two ping replies and `200`.
+Expected: two replies and `200`.
 
-The `200` matters specifically: Task 11 copies a closure over this path.
+- [ ] **Step 4: Grow the root partition to fill the card**
 
-- [ ] **Step 7: Decision point**
-
-If every check above passed, continue to Task 11.
-
-If any check failed, roll back — Debian is still intact:
-```bash
-ssh root@192.168.4.230 'rpi-eeprom-config > /tmp/e.txt && sed -i "s/BOOT_ORDER=0xf14/BOOT_ORDER=0xf41/" /tmp/e.txt && rpi-eeprom-config --apply /tmp/e.txt && reboot'
-```
-
----
-
-### Task 11: Install onto the internal microSD
-
-> **This is the destructive, irreversible step.** It wipes `/dev/mmcblk0` and
-> destroys the Debian installation, including `homelab-scrapper`, `wol-server`
-> and `/etc/wol-server/config.toml`, the telegraf config, and the NFS export
-> setup. The user confirmed on 2026-08-22 that no backup is required.
->
-> Do not run this until Task 10 passed in full.
-
-**Files:** none.
-
-- [ ] **Step 1: Confirm the target one final time**
-
-Run:
-```bash
-ssh root@192.168.4.230 'lsblk -o NAME,SIZE,TYPE,TRAN,MOUNTPOINT /dev/mmcblk0; findmnt / -o SOURCE'
-```
-Expected: `mmcblk0` is 29.8G, `mmc`, **not mounted anywhere**, and `/` is on
-`/dev/sda*`.
-
-If `/` is on `mmcblk0`, you are booted from the microSD, not the pendrive. Stop.
-
-- [ ] **Step 2: Copy the prebuilt closure to the installer**
-
-Run from the machine that built it:
-```bash
-SYS=$(nix build .#nixosConfigurations.pella.config.system.build.toplevel --print-out-paths)
-echo "$SYS"
-nix copy --to ssh://root@192.168.4.230 "$SYS"
-```
-Expected: completes with no error. This avoids the Pi building its own system on
-four cores.
-
-Keep `$SYS` for Step 6.
-
-- [ ] **Step 3: Copy this repo to the installer**
-
-disko reads the layout from the flake, so the repo has to be present on the
-installer. `--exclude .git` keeps the transfer small; no history is needed.
-
-Run:
-```bash
-rsync -az --exclude .git ./ root@192.168.4.230:/tmp/nixos-config/
-ssh root@192.168.4.230 'ls /tmp/nixos-config/flake.nix /tmp/nixos-config/hosts/pella/disko.nix'
-```
-Expected: both paths listed.
-
-- [ ] **Step 4: Partition and format via disko**
-
-Run:
-```bash
-ssh root@192.168.4.230 'cd /tmp/nixos-config && nix run github:nix-community/disko/latest -- --mode destroy,format,mount --flake .#pella'
-```
-Expected: disko prints each partitioning step and finishes with the filesystems
-mounted under `/mnt`.
-
-- [ ] **Step 5: Verify the layout is exactly what was designed**
-
-Run:
-```bash
-ssh root@192.168.4.230 '
-  lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT /dev/mmcblk0
-  findmnt -R /mnt -o TARGET,SOURCE,FSTYPE,OPTIONS
-  btrfs subvolume list /mnt
-'
-```
-Expected:
-- `mmcblk0p1` vfat 512M at `/mnt/boot/firmware`
-- `mmcblk0p2` ext4 1G at `/mnt/boot`
-- `mmcblk0p3` btrfs at `/mnt`, with `@root @nix @home @varlib @log` listed
-- btrfs mounts show `compress=zstd:3`, `noatime`, `discard=async`
-
-If the partition **order** is wrong (boot before firmware), the `priority`
-values in `hosts/pella/disko.nix` did not apply. Fix Task 2 and redo.
-
-- [ ] **Step 6: Install the prebuilt system**
-
-Run, using the `$SYS` path from Step 2:
-```bash
-ssh root@192.168.4.230 "nixos-install --root /mnt --system $SYS --no-root-password"
-```
-Expected: ends with `installation finished!`.
-
-- [ ] **Step 7: Verify the firmware partition got populated**
-
-Run:
-```bash
-ssh root@192.168.4.230 'ls /mnt/boot/firmware; echo "--- extlinux ---"; ls /mnt/boot/extlinux'
-```
-Expected: `/mnt/boot/firmware` contains `bootcode.bin`, `config.txt`,
-`start4.elf`, `fixup4.dat`, `u-boot.bin`, `armstub8-gic.bin`,
-`bcm2711-rpi-4-b.dtb` and `.pella-firmware`. `/mnt/boot/extlinux` contains
-`extlinux.conf`.
-
-**This is the single most important check in the plan.** If
-`/mnt/boot/firmware` is empty or missing `u-boot.bin`, the activation script from
-Task 3 did not run under `nixos-install`. Populate it by hand before rebooting:
-
-```bash
-ssh root@192.168.4.230 '
-  FW=$(ls -d /nix/store/*-pella-rpi-firmware | head -1)
-  echo "using $FW"
-  rsync -rt "$FW"/ /mnt/boot/firmware/
-  echo "$FW" > /mnt/boot/firmware/.pella-firmware
-  ls /mnt/boot/firmware
-'
-```
-
-- [ ] **Step 8: Confirm extlinux points at a kernel that exists**
-
-Run:
-```bash
-ssh root@192.168.4.230 '
-  cat /mnt/boot/extlinux/extlinux.conf
-  echo "--- resolving referenced files ---"
-  awk "/^[[:space:]]*(LINUX|INITRD)/ {print \$2}" /mnt/boot/extlinux/extlinux.conf \
-    | while read f; do ls -l "/mnt/boot/$f" 2>&1; done
-'
-```
-Expected: every `LINUX` and `INITRD` path listed by the loop resolves to a real
-file. A "No such file" here means the Pi will drop to a u-boot prompt on boot.
-
-### Task 12: Boot from the microSD and confirm acceptance
-
-**Files:** none.
-
-- [ ] **Step 1: Restore SD-first boot order**
-
-Run:
-```bash
-ssh root@192.168.4.230 'rpi-eeprom-config > /tmp/e.txt && sed -i "s/BOOT_ORDER=0xf14/BOOT_ORDER=0xf41/" /tmp/e.txt && rpi-eeprom-config --apply /tmp/e.txt && rpi-eeprom-config'
-```
-Expected: `BOOT_ORDER=0xf41`.
-
-- [ ] **Step 2: Shut down and remove the pendrive**
-
-Run:
-```bash
-ssh root@192.168.4.230 'poweroff' || true
-```
-
-Physically unplug the pendrive, then power the Pi back on.
-
-Removing the drive rather than relying on boot order means a mistake in Step 1
-cannot silently boot the installer again.
-
-- [ ] **Step 3: Confirm it booted the real system from the microSD**
-
-Run:
-```bash
-ssh jagadam97@192.168.4.230 'hostname; findmnt / -o SOURCE,FSTYPE; uname -m'
-```
-Expected: `pella`, `/dev/mmcblk0p3` with `btrfs`, and `aarch64`.
-
-- [ ] **Step 4: Run the acceptance checks from the spec**
+The image was built at 12G; the card is 29.8G. GPT also needs its backup header
+moved to the real end of the device.
 
 Run:
 ```bash
 ssh jagadam97@192.168.4.230 '
-  echo "--- mounts ---";    findmnt -R / -o TARGET,SOURCE,FSTYPE,OPTIONS | grep -E "btrfs|vfat|ext4"
-  echo "--- subvols ---";   sudo btrfs subvolume list /
-  echo "--- compress ---";  mount | grep btrfs
-  echo "--- addr ---";      ip -br addr show eth0
-  echo "--- no dhcp ---";   (pgrep -a dhcpcd || echo "no dhcp client")
-  echo "--- eth1 ---";      lsusb -t | grep r8152
-  echo "--- tailscale ---"; tailscale ip -4 || true
-  echo "--- errors ---";    journalctl -p err -b --no-pager | tail -20
+  sudo sgdisk --move-second-header /dev/mmcblk0
+  sudo parted ---pretend-input-tty /dev/mmcblk0 <<< $"resizepart 3 100%\nyes\n"
+  sudo partprobe /dev/mmcblk0
+  lsblk -o NAME,SIZE,FSTYPE /dev/mmcblk0
 '
 ```
-Expected:
-- three filesystems mounted as designed, btrfs options include
-  `compress=zstd:3` and `discard=async`
-- five subvolumes listed
-- `eth0` = `192.168.4.230/24`, no DHCP client
-- `r8152` at 5000M
-- a Tailscale v4 address
-- no errors in the journal
+Expected: `mmcblk0p3` now reports roughly 28G.
 
-- [ ] **Step 5: Bring Tailscale up if it needs authenticating**
+- [ ] **Step 5: Grow the btrfs filesystem**
+
+btrfs grows online; no reboot or unmount needed.
 
 Run:
 ```bash
-ssh jagadam97@192.168.4.230 'sudo tailscale up --hostname pella'
+ssh jagadam97@192.168.4.230 '
+  sudo btrfs filesystem resize max /
+  df -h /
+  sudo btrfs filesystem usage / | head -8
+'
 ```
-Expected: either already-connected, or a login URL to visit once.
+Expected: `/` now shows roughly 28G total.
 
 - [ ] **Step 6: Confirm the box can rebuild itself**
 
-Run:
-The repo was copied to `/tmp/nixos-config` in Task 11 Step 3, but `/tmp` does
-not survive a reboot. Re-sync it first.
+This is the real proof it is a managed host and not a one-shot image.
 
+Run:
 ```bash
 rsync -az --exclude .git ./ jagadam97@192.168.4.230:/tmp/nixos-config/
 ssh jagadam97@192.168.4.230 'cd /tmp/nixos-config && sudo nixos-rebuild switch --flake .#pella'
 ```
-Expected: `switching to configuration...` and no error.
-
-This is the real proof the host is self-sufficient rather than a one-shot image.
+Expected: `switching to configuration...` with no error.
 
 - [ ] **Step 7: Confirm the firmware activation script is idempotent**
 
 Run:
 ```bash
-ssh jagadam97@192.168.4.230 'sudo nixos-rebuild switch --flake /tmp/nixos-config#pella 2>&1 | grep -i "populating /boot/firmware" || echo "skipped as expected"'
+ssh jagadam97@192.168.4.230 'cd /tmp/nixos-config && sudo nixos-rebuild switch --flake .#pella 2>&1 | grep -i "populating /boot/firmware" || echo "skipped as expected"'
 ```
 Expected: `skipped as expected` — the stamp file should prevent a second copy.
 
+- [ ] **Step 8: Bring Tailscale up**
+
+Run:
+```bash
+ssh jagadam97@192.168.4.230 'sudo tailscale up --hostname pella; tailscale ip -4'
+```
+Expected: either already connected, or a one-time login URL, then a `100.x.y.z`
+address.
+
 ---
 
-### Task 13: Add the sops age key
+### Task 11: Add the sops age key
 
-The host SSH key only exists now that the box has booted, so this could not be
-done earlier. It has to happen before phase 2, which needs PPPoE credentials.
+The host SSH key only exists now that the box has booted. This has to happen
+before phase 2, which stores PPPoE credentials.
 
 **Files:**
 - Modify: `.sops.yaml`
 - Modify: `hosts/pella/secrets.yaml`
 
-- [ ] **Step 1: Derive the age key from the new host key**
+- [ ] **Step 1: Derive the age key**
 
 Run:
 ```bash
@@ -1286,13 +1085,13 @@ Expected: a single `age1...` string. Record it.
 
 - [ ] **Step 2: Add the key to `.sops.yaml`**
 
-In the `keys:` block, after the `kayda` entry:
+In the `keys:` block, after the `kayda` entry, using the value from Step 1:
 
 ```yaml
-  - &pella age1REPLACE_WITH_THE_KEY_FROM_STEP_1
+  - &pella age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-And add a creation rule after the `kayda` rule:
+Add a creation rule after the `kayda` rule:
 
 ```yaml
   - path_regex: hosts/pella/secrets\.yaml$
@@ -1302,41 +1101,42 @@ And add a creation rule after the `kayda` rule:
           - *admin
 ```
 
-Also add `- *pella` to the `age:` list of the `secrets/common\.yaml$` rule so
-this host can read shared secrets.
+And add `- *pella` to the `age:` list of the `secrets/common\.yaml$` rule so this
+host can read shared secrets.
 
-- [ ] **Step 3: Provision the age key file on the host**
+- [ ] **Step 3: Provision the private age key on the host**
 
 Run:
 ```bash
 ssh jagadam97@192.168.4.230 '
   sudo mkdir -p /var/lib/sops-nix
-  sudo sh -c "cat /etc/ssh/ssh_host_ed25519_key | nix run nixpkgs#ssh-to-age -- -private-key > /var/lib/sops-nix/keys.txt"
+  sudo sh -c "nix run nixpkgs#ssh-to-age -- -private-key -i /etc/ssh/ssh_host_ed25519_key > /var/lib/sops-nix/keys.txt"
   sudo chmod 600 /var/lib/sops-nix/keys.txt
   sudo ls -l /var/lib/sops-nix/keys.txt
 '
 ```
 Expected: a `-rw-------` file owned by root.
 
-- [ ] **Step 4: Verify sops can round-trip a secret for this host**
+- [ ] **Step 4: Verify sops round-trips for this host**
 
 Run:
 ```bash
 printf 'placeholder: notasecret\n' > /tmp/pella-test.yaml
 sops --config .sops.yaml -e /tmp/pella-test.yaml > hosts/pella/secrets.yaml
 sops --config .sops.yaml -d hosts/pella/secrets.yaml
+grep -c 'age1' hosts/pella/secrets.yaml
 ```
-Expected: the decrypted output shows `placeholder: notasecret`, and
-`hosts/pella/secrets.yaml` on disk is encrypted (contains `sops:` metadata and
-an `age:` recipient list including the new key).
+Expected: the decrypt prints `placeholder: notasecret`, and the file on disk
+contains `sops:` metadata with age recipients.
 
-- [ ] **Step 5: Confirm the host itself can decrypt after a rebuild**
+- [ ] **Step 5: Confirm the host can decrypt after a rebuild**
 
 Run:
 ```bash
-ssh jagadam97@192.168.4.230 'sudo nixos-rebuild switch --flake /tmp/nixos-config#pella && systemctl status sops-nix --no-pager | head -5'
+rsync -az --exclude .git ./ jagadam97@192.168.4.230:/tmp/nixos-config/
+ssh jagadam97@192.168.4.230 'cd /tmp/nixos-config && sudo nixos-rebuild switch --flake .#pella && systemctl status sops-nix --no-pager | head -5'
 ```
-Expected: the `sops-nix` unit is active/exited without failure.
+Expected: the `sops-nix` unit active/exited without failure.
 
 - [ ] **Step 6: Commit**
 
@@ -1350,12 +1150,12 @@ Needed before phase 2, which stores PPPoE credentials."
 
 ---
 
-### Task 14: Update the spec status and finish the branch
+### Task 12: Update the spec and finish the branch
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-08-22-pella-nixos-phase1-design.md`
 
-- [ ] **Step 1: Mark the spec done**
+- [ ] **Step 1: Mark the spec implemented**
 
 Change the `**Status:**` line to:
 
@@ -1363,50 +1163,61 @@ Change the `**Status:**` line to:
 **Status:** Implemented 2026-08-22 — see docs/superpowers/plans/2026-08-22-pella-nixos-phase1.md
 ```
 
-- [ ] **Step 2: Record anything that diverged**
+- [ ] **Step 2: Record what diverged**
 
-If the implementation departed from the design — most likely candidates are the
-GPT/MBR question and the firmware activation script — add a short
-`## Implementation notes` section at the end of the spec saying what changed and
-why. Do not silently leave the spec describing something that was not built.
+The spec still describes the two-stage pendrive install. Replace that section
+with the offline-image approach, and note why: `disko`'s image builder runs a
+real `nixos-install` inside a VM, so the firmware activation script runs during
+the build, and the image can be inspected before hardware is touched.
+
+Do not leave the spec describing something that was not built.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add docs/superpowers/specs/2026-08-22-pella-nixos-phase1-design.md
-git commit -m "docs(pella): mark phase 1 spec implemented"
+git commit -m "docs(pella): mark phase 1 implemented, record the offline-image change"
 ```
 
 - [ ] **Step 4: Hand off**
 
-Use the superpowers:finishing-a-development-branch skill to decide between
+Use the superpowers:finishing-a-development-branch skill to choose between
 merging `feat/pella-nixos-router` to `main`, opening a PR, or leaving it.
 
 ---
 
 ## Contingencies
 
-Things most likely to go wrong, with the concrete response. All of these are
-recoverable — after Task 11 Debian is gone, but the pendrive installer remains
-bootable, so a retry costs one `BOOT_ORDER` flip and a reboot.
+### `/boot/firmware` is empty in the built image (Task 8 Step 3)
 
-### The Pi does not boot from the GPT-partitioned microSD
+The activation script did not run during `nixos-install`. Do not write the image.
+Use the script variant of the image build, which can inject files directly:
 
-The nixpkgs `sdImage` uses an MBR table, and Debian on this Pi used MBR too
-(`root=PARTUUID=88d04481-02` is MBR-style). The `disko` layout uses GPT because
-disko's `table` type is deprecated and documented as breaking its own test
-framework. The 2026 bootloader should read GPT, but this was not verified on
-this specific board.
+```bash
+nix build .#nixosConfigurations.pella.config.system.build.diskoImagesScript
+FW=$(nix eval --raw .#nixosConfigurations.pella.config.system.activationScripts.pellaRpiFirmware.text \
+  | grep -oE '/nix/store/[a-z0-9]{32}-pella-rpi-firmware' | head -1)
+sudo ./result --build-memory 4096 --post-format-files "$FW" /boot/firmware
+```
 
-If the Pi will not boot from the card, boot the pendrive again
-(`BOOT_ORDER=0xf14`) and switch the layout to MBR in `hosts/pella/disko.nix`:
+`--post-format-files` copies into the finished image after formatting, which is
+exactly this case. Re-run Task 8 to verify.
+
+### The Pi does not boot from the GPT image
+
+nixpkgs' `sdImage` uses MBR, and Debian on this Pi used MBR too
+(`root=PARTUUID=88d04481-02` is MBR-style). GPT is used here because disko's
+`table` type is deprecated and documented as breaking its own test framework. The
+2026 bootloader should read GPT, but this was not verified on this board.
+
+If it will not boot, switch `hosts/pella/disko.nix` to MBR and rebuild the image:
 
 ```nix
         content = {
           type = "table";
           format = "msdos";
           partitions = [
-            { name = "firmware"; start = "1M";    end = "513M"; fs-type = "fat32"; bootable = true;
+            { name = "firmware"; start = "1M";    end = "513M";  fs-type = "fat32"; bootable = true;
               content = { type = "filesystem"; format = "vfat"; mountpoint = "/boot/firmware"; }; }
             { name = "boot";     start = "513M";  end = "1537M"; fs-type = "ext4";
               content = { type = "filesystem"; format = "ext4"; mountpoint = "/boot"; }; }
@@ -1428,35 +1239,64 @@ If the Pi will not boot from the card, boot the pendrive again
 
 Accept the deprecation warning; it is a warning, not an error.
 
+### It boots but SSH never answers
+
+Attach HDMI and a USB keyboard — with `console=tty1` set, boot messages appear on
+the display. Most likely causes: `eth0` named something else by the RPi4 kernel
+(check `ip -br link`), or the static address failing to apply. The image is
+rebuildable and the card rewritable, so this is recoverable, just slower.
+
 ### u-boot cannot find `extlinux.conf`
 
-This is what the separate ext4 `/boot` exists to prevent. If it still happens,
-check `/boot/extlinux/extlinux.conf` exists and its `LINUX`/`INITRD` paths
-resolve. If u-boot cannot read ext4 either, fall back to `raspberry-pi-nix`
-pinned via `flake.lock`, which drops u-boot entirely and has the firmware load
-the kernel directly from `config.txt` — accepting an archived dependency.
+This is what the separate ext4 `/boot` exists to prevent, and Task 8 Step 4
+should have caught it. If u-boot cannot read ext4 either, fall back to
+`raspberry-pi-nix` pinned via `flake.lock` — it drops u-boot entirely and has the
+firmware load the kernel directly from `config.txt`, accepting an archived
+dependency.
 
 ### `nixos-hardware`'s RPi4 kernel conflicts with something
 
-The module pins its own `kernelPackages`. If that collides with a module from
-`modules/common`, override in `hosts/pella/hardware.nix` with
+The module pins its own `kernelPackages`. Override in
+`hosts/pella/hardware.nix` with
 `boot.kernelPackages = lib.mkForce pkgs.linuxPackages_rpi4;`.
 
-### The emulated build is intolerably slow
+### The image build runs out of memory or disk
 
-Try nauvoo instead of alienX:
+Use the script variant with more memory:
 ```bash
-nix build .#nixosConfigurations.pella.config.system.build.toplevel --builders "$NAUVOO_NIX_BUILDERS"
+nix build .#nixosConfigurations.pella.config.system.build.diskoImagesScript
+sudo ./result --build-memory 4096
 ```
-Neither is native aarch64; if both are unusable, the fallback is building on the
-Pi itself after a minimal first install, which is slow but native.
+alienX has 61GB RAM, so memory should not be the binding constraint. If disk is
+short, lower `imageSize` in `hosts/pella/disko.nix` — btrfs is grown to fill the
+card in Task 10 regardless, so a smaller image costs nothing.
+
+---
+
+## What changed from the first version of this plan
+
+The original plan installed via a pendrive: build a throwaway `sdImage`
+installer, `dd` it to the pendrive, flip `BOOT_ORDER` to `0xf14`, boot it, run
+`disko` and `nixos-install` on live hardware, flip `BOOT_ORDER` back. Fourteen
+tasks.
+
+Replaced with an offline `disko` image because it is both simpler and safer:
+
+- No installer configuration, no pendrive, no `BOOT_ORDER` changes, no
+  partitioning on live hardware
+- **The image is inspected before the card is written.** A bad firmware
+  partition is a failed `ls` in Task 8, not a black screen after Debian is gone
+- btrfs, zstd:3 and the three-partition layout are unchanged
+
+Cost: the card is handled physically, and the `dd` destroys Debian with no
+unplug-to-rollback. Both already accepted.
 
 ---
 
 ## Out of scope — phase 2
 
-Not in this plan: the `192.168.4.1` takeover, PPPoE on `eth1`, nftables/NAT,
-DHCP server, DNS pointing at AdGuard Home, service migration off Debian, and
-SQM/CAKE. See the phase 2 preview in the spec, including the measured
-constraint that nftables flowtable offload cannot accelerate `ppp0`, capping
-this Pi around 400-550 Mbps against a 450 Mbps line.
+The `192.168.4.1` takeover, PPPoE on `eth1`, nftables/NAT, DHCP server, DNS
+pointing at AdGuard Home, service migration off Debian, and SQM/CAKE. See the
+phase 2 preview in the spec, including the measured constraint that nftables
+flowtable offload cannot accelerate `ppp0`, capping this Pi around 400-550 Mbps
+against a 450 Mbps line.
