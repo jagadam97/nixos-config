@@ -1,7 +1,17 @@
 # pella — NixOS on Raspberry Pi 4, Phase 1
 
 **Date:** 2026-08-22
-**Status:** In progress — implementation tracked in `docs/superpowers/plans/2026-08-22-pella-nixos-phase1.md`
+**Status:** Implemented, 2026-08-22 — pella boots NixOS at 192.168.4.230. See
+the outcome section of `docs/superpowers/plans/2026-08-22-pella-nixos-phase1.md`
+for what changed during the install. Tailscale auth and the sops age key are
+still open.
+
+**Install medium, as built:** the image was written to the 114.6 GB USB disk from
+the running Debian, not to the microSD. The EEPROM boot order is `0xf14` (USB
+first, microSD second), so Debian remains on the card as an untouched fallback
+and no physical access is needed. `sdImage.expandOnBoot` does not fire — its
+`ConditionPathExists=/nix-path-registration` is already gone by the time the unit
+is reached — so the root was grown by hand with `sfdisk`/`resize2fs`.
 **Host:** `pella` (new), Raspberry Pi 4 Model B Rev 1.5, 4GB, `aarch64-linux`
 
 ## Goal

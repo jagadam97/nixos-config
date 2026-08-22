@@ -118,7 +118,7 @@ disko approach. Neither is needed.
 
 ---
 
-### Task 4: Build the image
+### Task 4: Build the image — DONE (built on razorback)
 
 **Files:** none.
 
@@ -169,7 +169,7 @@ Expected: a `.img` path, a few GB.
 
 ---
 
-### Task 5: Verify the image before writing it
+### Task 5: Verify the image before writing it — DONE
 
 Every check here is free — the card has not been touched and Debian is still
 running.
@@ -255,7 +255,7 @@ Skip if the image is already local.
 
 ---
 
-### Task 6: Write the image to the microSD
+### Task 6: Write the image to the microSD — SUPERSEDED (written to the USB disk instead)
 
 > **Destructive step.** This overwrites the Pi's 29.8GB microSD and destroys the
 > Debian installation, including `homelab-scrapper`, `wol-server` and
@@ -323,7 +323,7 @@ Tailscale, so allow 3-5 minutes.
 
 ---
 
-### Task 7: Confirm acceptance
+### Task 7: Confirm acceptance — DONE
 
 **Files:** none.
 
@@ -573,3 +573,85 @@ pointing at AdGuard Home, service migration off Debian, and SQM/CAKE. See the
 phase 2 preview in the spec, including the measured constraint that nftables
 flowtable offload cannot accelerate `ppp0`, capping this Pi around 400-550 Mbps
 against a 450 Mbps line.
+
+
+---
+
+## Outcome, 2026-08-22
+
+Phase 1 is up. pella boots NixOS 26.11.20260818 (Zokor) and is reachable at
+192.168.4.230.
+
+### What changed from the plan
+
+**The image went to the USB disk, not the microSD.** The plan assumed the card
+would be moved to the macbook. Instead the whole install was done remotely from
+the running Debian: the image was `dd`'d onto the 114.6 GB SanDisk hanging off
+USB3 (`/dev/sda`, which held a stale RHEL-10 installer), and the EEPROM boot
+order was set to `BOOT_ORDER=0xf14` — USB first, microSD second. Debian is
+untouched on the card and is still the fallback. This is strictly better: no
+physical access is needed, and a firmware-level boot failure returns to Debian
+by itself.
+
+**razorback did the building.** alienX is reached over a DERP relay at 2.8 MB/s,
+so copying the 4 GB result back cost more than the build. razorback is on the
+LAN with aarch64 binfmt, and it writes straight to the Pi at LAN speed — the
+`dd` took about four minutes end to end.
+
+**Verification moved onto the Pi.** razorback needs an interactive sudo
+password, so the loop-mount checks ran on the Pi itself against the written
+device — a stronger check than inspecting the image file. Note that a NixOS
+image's `/etc` entries are absolute symlinks into `/nix/store`, so they only
+resolve inside a chroot; `chroot /mnt/prt $TOPLEVEL/sw/bin/bash` with `PATH` set
+is the way to read them.
+
+### Two things that bit
+
+**`sdImage.expandOnBoot` never ran.** `expand-root-partition.service` carries
+`ConditionPathExists=/nix-path-registration`, and first-boot activation deletes
+that file before the unit is reached, so it was skipped on every boot — the root
+stayed at 4 GB (91% full) on a 114.6 GB disk. Grown by hand:
+
+```bash
+echo ',+' | sudo sfdisk -N 2 --no-reread --force /dev/sda
+sudo partprobe /dev/sda
+sudo resize2fs /dev/sda2   # online, root mounted
+```
+
+Result: 113 GB, 4% used. **Expect to do this by hand again** when the root moves
+to the Samsung EVO SSD.
+
+**The first boot guard rebooted in a loop for five hours.** `/boot/firmware` is
+`nofail,noauto` and the image does not ship the mount point, so `mount` failed,
+`start4.elf` was never renamed — and the script rebooted anyway. USB boot stayed
+bootable, so every boot re-armed the timer: 15:41, 16:02, 16:22 … 20:26. Nothing
+was damaged, but the box was unusable until the boot was confirmed.
+
+Fixed in `38e82e8`: create the mount point, and only reboot once `start4.elf` is
+provably renamed. On any failure it stays up and logs, because a box that is up
+and wrong can be fixed remotely and a box in a reboot loop cannot.
+
+Confirm a boot with:
+
+```bash
+sudo touch /var/lib/pella-boot-confirmed
+```
+
+### Acceptance results
+
+| Check | Result |
+| --- | --- |
+| Identity | `pella`, NixOS 26.11.20260818 (Zokor) |
+| Root | `/dev/sda2` ext4, 113 GB, 4% used |
+| eth0 | `bcmgenet` on `fd580000.ethernet`, static 192.168.4.230/24, gw 192.168.4.1 |
+| eth1 | `r8152` USB `2-2:1.0`, down — reserved for the phase 2 PPPoE WAN |
+| Outbound | `cache.nixos.org` HTTP 200 in 0.88 s, DNS resolves |
+| Self-rebuild | `nixos-rebuild switch --flake .#pella` succeeds on the Pi |
+| Boot guard | armed each boot, no-ops once confirmed |
+
+### Still open
+
+- Tailscale is running but logged out — needs `tailscale up`.
+- Task 8, the sops age key, is not done. No secrets are used in phase 1.
+- The root lives on a USB flash stick. Moving it to the Samsung EVO SSD is a
+  re-`dd` plus a manual grow.
