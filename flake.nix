@@ -171,6 +171,7 @@
             ./hosts/pella
             ./modules/common
             ./modules/services/nfs-mounts.nix
+            ./modules/services/homelab-scrapper.nix
           ];
         };
       };
