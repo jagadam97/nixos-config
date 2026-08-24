@@ -183,6 +183,7 @@
             ./modules/common
             ./modules/services/nfs-mounts.nix
             ./modules/services/homelab-scrapper.nix
+            ./modules/services/filebrowser-quantum.nix
             ./modules/services/telegraf.nix
           ];
         };

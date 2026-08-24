@@ -140,6 +140,19 @@
     environmentFile = config.sops.secrets."homelab-scrapper.env".path;
   };
 
+  # FileBrowser Quantum. Admin password and JWT signing key live in one env
+  # file rather than the config file, because that is the only way Quantum
+  # takes them without writing them into a world-readable store path.
+  sops.secrets."filebrowser-quantum.env" = {
+    owner = "root";
+    restartUnits = [ "filebrowser-quantum.service" ];
+  };
+
+  services.filebrowserQuantum = {
+    enable = true;
+    environmentFile = config.sops.secrets."filebrowser-quantum.env".path;
+  };
+
   system.stateVersion = "26.11";
 
   # No secrets are used in phase 1. The age key derives from this host's SSH
