@@ -144,6 +144,7 @@
             # ./modules/dashboard
             ./modules/services/disable-suspend.nix
             ./modules/services/nixos-autoupdate.nix
+            ./modules/services/pella-autodeploy.nix
             ./modules/services/nfs-mounts.nix
             ./modules/services/jellyfin.nix
             ./modules/services/telegraf.nix
