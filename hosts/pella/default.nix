@@ -153,6 +153,18 @@
     environmentFile = config.sops.secrets."filebrowser-quantum.env".path;
   };
 
+  # openGym. The reverse proxy that terminates TLS lives on another host and
+  # routes / to webPort and /api/ to apiPort, so rpId and origin name *that*
+  # proxy - passkeys are checked against what the browser saw, not against this
+  # box's address.
+  services.opengym = {
+    enable = true;
+    webPort = 8090;
+    apiPort = 3000;
+    rpId = "CHANGEME.example.com";
+    origin = "https://CHANGEME.example.com";
+  };
+
   system.stateVersion = "26.11";
 
   # No secrets are used in phase 1. The age key derives from this host's SSH
