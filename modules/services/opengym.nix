@@ -200,8 +200,14 @@ in
         existing backup, at the cost of a hard dependency: the unit gains a
         RequiresMountsFor on this path, so it waits for the mount and refuses to
         start without it rather than quietly writing to an empty directory.
-        Ownership is then the export's business - if the server squashes or
-        remaps the opengym uid, the API fails on its first write.
+
+        The directory has to be created on the server, not here. The homelab
+        exports are all_squash with anonuid/anongid 101000, so nothing this
+        host runs - root included - can create or chown anything the server
+        does not already permit. For bx500 that is:
+
+          mkdir -p /mnt/pve/bx500/opengym/data
+          chown -R 101000:101000 /mnt/pve/bx500/opengym
       '';
     };
 
@@ -231,12 +237,10 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # uid/gid are pinned because dataDir can live on NFS, and an NFSv4 sec=sys
-    # export authorises by numeric id. An auto-allocated uid would drift the
-    # first time the user is recreated - which rollbacks do - and the server
-    # would then refuse writes to a directory it still believes is owned by
-    # somebody else. 995/992 are what this host allocated; keep them in step
-    # with whatever owns the directory on the NAS.
+    # Pinned so the ownership of dataDir survives the user being deleted and
+    # recreated, which is what a failed deploy's rollback does. Nothing to do
+    # with NFS: the bx500 export is all_squash, so every client uid arrives as
+    # anonuid regardless of what it is here.
     users.users.opengym = {
       isSystemUser = true;
       group = "opengym";
@@ -286,16 +290,16 @@ in
 
           if [ ! -d ${dataDir} ]; then
             echo "[opengym] ${dataDir} does not exist and could not be created."
-            echo "[opengym] If this is a root-squashed NFS export, create it on"
-            echo "[opengym] the server and give it to uid 995 / gid 992."
+            echo "[opengym] On a squashed NFS export, create it on the server"
+            echo "[opengym] and give it to that export's anonuid/anongid."
             exit 1
           fi
 
           if ! ${pkgs.util-linux}/bin/runuser -u opengym -- \
                  test -w ${dataDir}; then
-            echo "[opengym] ${dataDir} exists but is not writable by opengym"
-            echo "[opengym] (uid 995 / gid 992). Fix the ownership on the"
-            echo "[opengym] server that exports it."
+            echo "[opengym] ${dataDir} exists but is not writable by opengym."
+            echo "[opengym] If it is on NFS, fix the ownership on the server -"
+            echo "[opengym] a squashed export ignores what this host thinks."
             exit 1
           fi
 

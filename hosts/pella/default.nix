@@ -163,13 +163,15 @@
     apiPort = 3000;
     rpId = "gym.jagadam97.uk";
     origin = "https://gym.jagadam97.uk";
-    # dataDir stays at its default on the microSD. bx500 was the obvious home
-    # for it - already backed up, no SD wear - but that export squashes root,
-    # so nothing pella runs can create a directory there; only the storage box
-    # itself can. To move it later: create /mnt/pve/bx500/opengym/data on
-    # 192.168.4.240 owned by 995:992, then set
-    #   dataDir = "/mnt/bx500/opengym/data";
-    # The module already handles the rest.
+    # dataDir stays at its default on the microSD. bx500 is the better home for
+    # it - already backed up, no SD wear - but that export is all_squash with
+    # anonuid 101000, so every uid from this host arrives as 101000 and none of
+    # them may create anything under a root-owned export root. To move it, on
+    # 192.168.4.240:
+    #   mkdir -p /mnt/pve/bx500/opengym/data
+    #   chown -R 101000:101000 /mnt/pve/bx500/opengym
+    # then set dataDir = "/mnt/bx500/opengym/data" here. The module handles the
+    # mount ordering and tolerates the chown it will not be allowed to do.
   };
 
   system.stateVersion = "26.11";
