@@ -6,7 +6,7 @@
 # React app and proxies /api to the API so everything sits on one origin. None
 # of that needs a container runtime here:
 #
-#   media -> a systemd oneshot with git, into /var/lib/opengym/media
+#   media -> a systemd oneshot with git, into the web root itself
 #   api   -> buildNpmPackage + a plain unit on ${apiPort}
 #   web   -> static-web-server on ${webPort}, serving the vite dist
 #
@@ -86,8 +86,16 @@ let
   # Local scratch: the built app and the downloaded media. Neither is worth
   # backing up - both are reproducible from the store and from upstream.
   stateDir = "/var/lib/opengym";
-  mediaDir = "${stateDir}/media";
   wwwDir = "${stateDir}/www";
+
+  # Directly inside the web root, not symlinked in from elsewhere.
+  # static-web-server resolves a path and then checks the result is still under
+  # its root, so a symlink pointing anywhere else - the store, a sibling
+  # directory - is treated as missing. With page-fallback set that does not even
+  # 404: every asset quietly returns index.html, and the app renders a white
+  # page while every request looks like a 200.
+  mediaImgDir = "${wwwDir}/img";
+  mediaGifDir = "${wwwDir}/gif";
 
   # The part that actually matters, and the only thing to back up.
   dataDir = cfg.dataDir;
@@ -99,7 +107,17 @@ let
   mediaScript = pkgs.writeShellScript "opengym-fetch-media" ''
     set -euo pipefail
 
-    if [ -n "$(ls -A ${mediaDir}/img 2>/dev/null)" ]; then
+    # The media used to live beside the web root and get symlinked in, which
+    # SWS refused to follow. Move it rather than pull 140 MB down again.
+    if [ -n "$(ls -A ${stateDir}/media/img 2>/dev/null)" ] \
+       && [ -z "$(ls -A ${mediaImgDir} 2>/dev/null)" ]; then
+      echo "[opengym] moving media into the web root"
+      mv ${stateDir}/media/img/* ${mediaImgDir}/
+      mv ${stateDir}/media/gif/* ${mediaGifDir}/ 2>/dev/null || true
+      rm -rf ${stateDir}/media
+    fi
+
+    if [ -n "$(ls -A ${mediaImgDir} 2>/dev/null)" ]; then
       echo "[opengym] exercise media already present, skipping download"
       exit 0
     fi
@@ -111,30 +129,36 @@ let
     ${pkgs.git}/bin/git clone --depth 1 \
       https://github.com/hasaneyldrm/exercises-dataset "$TMP/ds"
 
-    cp "$TMP"/ds/images/*.jpg ${mediaDir}/img/
-    cp "$TMP"/ds/videos/*.gif ${mediaDir}/gif/
+    cp "$TMP"/ds/images/*.jpg ${mediaImgDir}/
+    cp "$TMP"/ds/videos/*.gif ${mediaGifDir}/
 
-    echo "[opengym] media ready ($(ls ${mediaDir}/img | wc -l) images)"
+    echo "[opengym] media ready ($(ls ${mediaImgDir} | wc -l) images)"
   '';
 
-  # static-web-server needs one directory holding both the built app and the
-  # media, and the built app is a read-only store path. Symlinks rather than a
-  # copy: SWS follows them (it only stops if --disable-symlinks is set), and
-  # the store path changes on every upgrade, so anything copied would go stale.
-  # Clears the *contents* rather than the directory. ProtectSystem=strict gives
-  # this unit exactly one writable path - wwwDir itself - so removing wwwDir
-  # would need write access to its parent, which it does not have. tmpfiles
-  # owns the directory's existence, and it has to exist before the unit starts
-  # at all: systemd cannot bind a missing ReadWritePaths entry into the mount
-  # namespace, and fails the unit with 226/NAMESPACE before ExecStartPre runs.
-  linkWwwScript = pkgs.writeShellScript "opengym-link-www" ''
+  # Copies the built app into the web root on every start. Symlinking the store
+  # path in was the obvious move and does not work: SWS canonicalises a request
+  # path and rejects the result if it leaves the root, so every asset became a
+  # silent page-fallback - HTTP 200, text/html, and a blank app.
+  #
+  # img/ and gif/ are skipped on both the delete and the copy: they are the
+  # media, they are the only expensive thing here, and re-downloading 140 MB on
+  # every restart would be absurd.
+  #
+  # The clear-out only ever touches wwwDir's contents, never wwwDir itself.
+  # ProtectSystem=strict gives this unit that one writable path, so removing
+  # the directory would need write access to a parent it cannot touch; tmpfiles
+  # owns its existence instead, and it must exist before the unit starts at all
+  # or systemd fails it with 226/NAMESPACE before ExecStartPre ever runs.
+  syncWwwScript = pkgs.writeShellScript "opengym-sync-www" ''
     set -euo pipefail
-    find ${wwwDir} -mindepth 1 -delete
-    for f in ${frontend}/*; do
-      ln -sfn "$f" ${wwwDir}/
-    done
-    ln -sfn ${mediaDir}/img ${wwwDir}/img
-    ln -sfn ${mediaDir}/gif ${wwwDir}/gif
+
+    find ${wwwDir} -mindepth 1 -maxdepth 1 \
+      ! -name img ! -name gif -exec rm -rf {} +
+
+    cp -r ${frontend}/. ${wwwDir}/
+    # Store files come out read-only; the next start has to be able to
+    # delete them again.
+    chmod -R u+w ${wwwDir}/index.html ${wwwDir}/assets
   '';
 
   swsConfig = (pkgs.formats.toml { }).generate "opengym-sws.toml" {
@@ -251,9 +275,8 @@ in
 
     systemd.tmpfiles.rules = [
       "d ${stateDir} 0750 opengym opengym -"
-      "d ${mediaDir} 0755 opengym opengym -"
-      "d ${mediaDir}/img 0755 opengym opengym -"
-      "d ${mediaDir}/gif 0755 opengym opengym -"
+      "d ${mediaImgDir} 0755 opengym opengym -"
+      "d ${mediaGifDir} 0755 opengym opengym -"
       # Must exist before opengym-web starts: it is that unit's only
       # ReadWritePaths entry, and systemd fails a unit with 226/NAMESPACE when
       # it cannot bind such a path into the mount namespace - before
@@ -392,7 +415,7 @@ in
         Group = "opengym";
         # Rebuilt on every start so an upgrade's new dist path is picked up
         # without leaving the previous one linked.
-        ExecStartPre = linkWwwScript;
+        ExecStartPre = syncWwwScript;
         ExecStart = "${lib.getExe pkgs.static-web-server} --config-file ${swsConfig}";
         Restart = "on-failure";
         RestartSec = 5;
