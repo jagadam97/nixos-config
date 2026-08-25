@@ -240,15 +240,38 @@ in
 
     systemd.tmpfiles.rules = [
       "d ${stateDir} 0750 opengym opengym -"
-      # Profiles, passkeys, per-user state, the session secret and vapid.json.
-      # This directory is the entire backup. On NFS the mode is advisory - the
-      # export decides - so a permission error here means the server side, not
-      # this rule.
-      "d ${dataDir} 0750 opengym opengym -"
       "d ${mediaDir} 0755 opengym opengym -"
       "d ${mediaDir}/img 0755 opengym opengym -"
       "d ${mediaDir}/gif 0755 opengym opengym -"
     ];
+
+    # tmpfiles cannot own dataDir once it lives on NFS: it runs early, before
+    # the automount has anything behind it, and a `d` rule that lands on the
+    # bare mountpoint is worse than useless. This runs as root, after the mount,
+    # immediately before the API - and it is the unit that will say plainly
+    # whether the export lets root create a directory at all.
+    #
+    # It has no namespace hardening on purpose. ReadWritePaths on a path that
+    # does not exist yet is what failed the API with 226/NAMESPACE; something
+    # unconfined has to create it first.
+    systemd.services.opengym-data-init = {
+      description = "Prepare openGym data directory";
+      wantedBy = [ "multi-user.target" ];
+      before = [ "opengym-api.service" ];
+      unitConfig.RequiresMountsFor = [ dataDir ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = pkgs.writeShellScript "opengym-data-init" ''
+          set -euo pipefail
+          mkdir -p ${dataDir}
+          chown opengym:opengym ${dataDir}
+          chmod 0750 ${dataDir}
+          echo "[opengym] data directory ready: ${dataDir}"
+        '';
+      };
+    };
 
     systemd.services.opengym-media = {
       description = "Download openGym exercise media";
@@ -271,8 +294,12 @@ in
     systemd.services.opengym-api = {
       description = "openGym API";
       wantedBy = [ "multi-user.target" ];
-      after = [ "network-online.target" ];
+      after = [
+        "network-online.target"
+        "opengym-data-init.service"
+      ];
       wants = [ "network-online.target" ];
+      requires = [ "opengym-data-init.service" ];
 
       # No-op when dataDir is local. When it is on NFS this is what makes the
       # difference between waiting for the automount and starting up against a
