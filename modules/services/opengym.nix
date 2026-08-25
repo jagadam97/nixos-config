@@ -231,12 +231,19 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # uid/gid are pinned because dataDir can live on NFS, and an NFSv4 sec=sys
+    # export authorises by numeric id. An auto-allocated uid would drift the
+    # first time the user is recreated - which rollbacks do - and the server
+    # would then refuse writes to a directory it still believes is owned by
+    # somebody else. 995/992 are what this host allocated; keep them in step
+    # with whatever owns the directory on the NAS.
     users.users.opengym = {
       isSystemUser = true;
       group = "opengym";
-      home = dataDir;
+      uid = 995;
+      home = stateDir;
     };
-    users.groups.opengym = { };
+    users.groups.opengym.gid = 992;
 
     systemd.tmpfiles.rules = [
       "d ${stateDir} 0750 opengym opengym -"
@@ -264,10 +271,34 @@ in
         Type = "oneshot";
         RemainAfterExit = true;
         ExecStart = pkgs.writeShellScript "opengym-data-init" ''
-          set -euo pipefail
-          mkdir -p ${dataDir}
-          chown opengym:opengym ${dataDir}
-          chmod 0750 ${dataDir}
+          set -uo pipefail
+
+          # On a root-squashed NFS export none of mkdir/chown/chmod can work -
+          # root here is nobody there. So none of them are fatal; the only thing
+          # that actually matters is whether the opengym user can write, and
+          # that is what gets checked. Locally all three succeed and the check
+          # is a formality.
+          if [ ! -d ${dataDir} ]; then
+            mkdir -p ${dataDir} || true
+          fi
+          chown opengym:opengym ${dataDir} 2>/dev/null || true
+          chmod 0750 ${dataDir} 2>/dev/null || true
+
+          if [ ! -d ${dataDir} ]; then
+            echo "[opengym] ${dataDir} does not exist and could not be created."
+            echo "[opengym] If this is a root-squashed NFS export, create it on"
+            echo "[opengym] the server and give it to uid 995 / gid 992."
+            exit 1
+          fi
+
+          if ! ${pkgs.util-linux}/bin/runuser -u opengym -- \
+                 test -w ${dataDir}; then
+            echo "[opengym] ${dataDir} exists but is not writable by opengym"
+            echo "[opengym] (uid 995 / gid 992). Fix the ownership on the"
+            echo "[opengym] server that exports it."
+            exit 1
+          fi
+
           echo "[opengym] data directory ready: ${dataDir}"
         '';
       };

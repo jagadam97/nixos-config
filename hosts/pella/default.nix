@@ -163,11 +163,13 @@
     apiPort = 3000;
     rpId = "gym.jagadam97.uk";
     origin = "https://gym.jagadam97.uk";
-    # On the NAS rather than the microSD: this is the only openGym directory
-    # worth keeping, and bx500 is already backed up. The unit gets a
-    # RequiresMountsFor on it, so a dead 192.168.4.240 stops the API instead of
-    # letting it invent an empty database on the mountpoint.
-    dataDir = "/mnt/bx500/opengym/data";
+    # dataDir stays at its default on the microSD. bx500 was the obvious home
+    # for it - already backed up, no SD wear - but that export squashes root,
+    # so nothing pella runs can create a directory there; only the storage box
+    # itself can. To move it later: create /mnt/pve/bx500/opengym/data on
+    # 192.168.4.240 owned by 995:992, then set
+    #   dataDir = "/mnt/bx500/opengym/data";
+    # The module already handles the rest.
   };
 
   system.stateVersion = "26.11";
