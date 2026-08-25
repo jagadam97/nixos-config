@@ -254,6 +254,11 @@ in
       "d ${mediaDir} 0755 opengym opengym -"
       "d ${mediaDir}/img 0755 opengym opengym -"
       "d ${mediaDir}/gif 0755 opengym opengym -"
+      # Must exist before opengym-web starts: it is that unit's only
+      # ReadWritePaths entry, and systemd fails a unit with 226/NAMESPACE when
+      # it cannot bind such a path into the mount namespace - before
+      # ExecStartPre gets a chance to create it.
+      "d ${wwwDir} 0755 opengym opengym -"
     ];
 
     # tmpfiles cannot own dataDir once it lives on NFS: it runs early, before
