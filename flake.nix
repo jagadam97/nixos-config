@@ -36,14 +36,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # openGym - self-hosted gym tracker. Not in nixpkgs and upstream ships only
-    # container images, so the source is an input and the two npm packages are
-    # built here. flake = false: it is a plain source tree, not a flake.
-    opengym = {
-      url = "git+https://gitlab.com/DuarteSantos8/opengym.git";
-      flake = false;
-    };
-
     # Push-based deploys for pella. Chosen over colmena for magic rollback: the
     # target reverts to the previous generation on its own if the deployer
     # cannot reconnect, which is the safety net a console-less box that is
@@ -192,7 +184,6 @@
             ./modules/services/nfs-mounts.nix
             ./modules/services/homelab-scrapper.nix
             ./modules/services/filebrowser-quantum.nix
-            ./modules/services/opengym.nix
             ./modules/services/telegraf.nix
           ];
         };

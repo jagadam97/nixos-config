@@ -153,27 +153,6 @@
     environmentFile = config.sops.secrets."filebrowser-quantum.env".path;
   };
 
-  # openGym. The reverse proxy that terminates TLS lives on another host and
-  # routes / to webPort and /api/ to apiPort, so rpId and origin name *that*
-  # proxy - passkeys are checked against what the browser saw, not against this
-  # box's address.
-  services.opengym = {
-    enable = true;
-    webPort = 8090;
-    apiPort = 3000;
-    rpId = "gym.jagadam97.uk";
-    origin = "https://gym.jagadam97.uk";
-    # dataDir stays at its default on the microSD. bx500 is the better home for
-    # it - already backed up, no SD wear - but that export is all_squash with
-    # anonuid 101000, so every uid from this host arrives as 101000 and none of
-    # them may create anything under a root-owned export root. To move it, on
-    # 192.168.4.240:
-    #   mkdir -p /mnt/pve/bx500/opengym/data
-    #   chown -R 101000:101000 /mnt/pve/bx500/opengym
-    # then set dataDir = "/mnt/bx500/opengym/data" here. The module handles the
-    # mount ordering and tolerates the chown it will not be allowed to do.
-  };
-
   system.stateVersion = "26.11";
 
   # No secrets are used in phase 1. The age key derives from this host's SSH

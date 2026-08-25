@@ -202,22 +202,6 @@
         "type": "github"
       }
     },
-    "opengym": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1787515403,
-        "narHash": "sha256-5CdJOgLRrperaN4XHpSoYAAwqoIqtvQtvJedOBmUDHk=",
-        "ref": "refs/heads/main",
-        "rev": "f8024d344debd556ad589c92eb71e77017a5445f",
-        "revCount": 227,
-        "type": "git",
-        "url": "https://gitlab.com/DuarteSantos8/opengym.git"
-      },
-      "original": {
-        "type": "git",
-        "url": "https://gitlab.com/DuarteSantos8/opengym.git"
-      }
-    },
     "root": {
       "inputs": {
         "darwin": "darwin",
@@ -229,7 +213,6 @@
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs_2",
         "nixpkgs-jellyfin": "nixpkgs-jellyfin",
-        "opengym": "opengym",
         "sops-nix": "sops-nix"
       }
     },
