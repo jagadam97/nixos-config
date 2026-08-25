@@ -161,8 +161,13 @@
     enable = true;
     webPort = 8090;
     apiPort = 3000;
-    rpId = "CHANGEME.example.com";
-    origin = "https://CHANGEME.example.com";
+    rpId = "gym.jagadam97.uk";
+    origin = "https://gym.jagadam97.uk";
+    # On the NAS rather than the microSD: this is the only openGym directory
+    # worth keeping, and bx500 is already backed up. The unit gets a
+    # RequiresMountsFor on it, so a dead 192.168.4.240 stops the API instead of
+    # letting it invent an empty database on the mountpoint.
+    dataDir = "/mnt/bx500/opengym/data";
   };
 
   system.stateVersion = "26.11";

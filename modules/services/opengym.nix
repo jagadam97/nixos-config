@@ -83,9 +83,14 @@ let
     '';
   };
 
-  dataDir = "/var/lib/opengym";
-  mediaDir = "${dataDir}/media";
-  wwwDir = "${dataDir}/www";
+  # Local scratch: the built app and the downloaded media. Neither is worth
+  # backing up - both are reproducible from the store and from upstream.
+  stateDir = "/var/lib/opengym";
+  mediaDir = "${stateDir}/media";
+  wwwDir = "${stateDir}/www";
+
+  # The part that actually matters, and the only thing to back up.
+  dataDir = cfg.dataDir;
 
   # ~140 MB of exercise images and GIFs. Fetched at runtime rather than pinned
   # into the store on purpose: it is third-party media under Gym visual's terms
@@ -116,10 +121,15 @@ let
   # media, and the built app is a read-only store path. Symlinks rather than a
   # copy: SWS follows them (it only stops if --disable-symlinks is set), and
   # the store path changes on every upgrade, so anything copied would go stale.
+  # Clears the *contents* rather than the directory. ProtectSystem=strict gives
+  # this unit exactly one writable path - wwwDir itself - so removing wwwDir
+  # would need write access to its parent, which it does not have. tmpfiles
+  # owns the directory's existence, and it has to exist before the unit starts
+  # at all: systemd cannot bind a missing ReadWritePaths entry into the mount
+  # namespace, and fails the unit with 226/NAMESPACE before ExecStartPre runs.
   linkWwwScript = pkgs.writeShellScript "opengym-link-www" ''
     set -euo pipefail
-    rm -rf ${wwwDir}
-    mkdir -p ${wwwDir}
+    find ${wwwDir} -mindepth 1 -delete
     for f in ${frontend}/*; do
       ln -sfn "$f" ${wwwDir}/
     done
@@ -178,6 +188,23 @@ in
       '';
     };
 
+    dataDir = lib.mkOption {
+      type = lib.types.path;
+      default = "/var/lib/opengym/data";
+      example = "/mnt/bx500/opengym/data";
+      description = ''
+        Where profiles, passkeys, per-user state, the session secret and
+        vapid.json live. Back up this directory and you have backed up openGym.
+
+        Putting it on an NFS mount keeps it off the SD card and inside an
+        existing backup, at the cost of a hard dependency: the unit gains a
+        RequiresMountsFor on this path, so it waits for the mount and refuses to
+        start without it rather than quietly writing to an empty directory.
+        Ownership is then the export's business - if the server squashes or
+        remaps the opengym uid, the API fails on its first write.
+      '';
+    };
+
     settings = lib.mkOption {
       type = lib.types.attrsOf lib.types.str;
       default = { };
@@ -212,10 +239,12 @@ in
     users.groups.opengym = { };
 
     systemd.tmpfiles.rules = [
-      "d ${dataDir} 0750 opengym opengym -"
+      "d ${stateDir} 0750 opengym opengym -"
       # Profiles, passkeys, per-user state, the session secret and vapid.json.
-      # This directory is the entire backup.
-      "d ${dataDir}/data 0750 opengym opengym -"
+      # This directory is the entire backup. On NFS the mode is advisory - the
+      # export decides - so a permission error here means the server side, not
+      # this rule.
+      "d ${dataDir} 0750 opengym opengym -"
       "d ${mediaDir} 0755 opengym opengym -"
       "d ${mediaDir}/img 0755 opengym opengym -"
       "d ${mediaDir}/gif 0755 opengym opengym -"
@@ -245,9 +274,15 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
 
+      # No-op when dataDir is local. When it is on NFS this is what makes the
+      # difference between waiting for the automount and starting up against a
+      # bare mountpoint - which would look like a brand new instance with every
+      # profile gone, and then write a fresh db.json underneath the mount.
+      unitConfig.RequiresMountsFor = [ dataDir ];
+
       environment = {
         PORT = toString cfg.apiPort;
-        DATA_DIR = "${dataDir}/data";
+        DATA_DIR = dataDir;
         RP_ID = cfg.rpId;
         ORIGIN = cfg.origin;
         RP_NAME = "openGym";
@@ -264,7 +299,7 @@ in
         RestartSec = 5;
 
         ProtectSystem = "strict";
-        ReadWritePaths = [ "${dataDir}/data" ];
+        ReadWritePaths = [ dataDir ];
         ProtectHome = true;
         PrivateTmp = true;
         NoNewPrivileges = true;
