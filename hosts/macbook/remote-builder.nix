@@ -1,12 +1,11 @@
-# Distributed builds: offload Linux builds to razorback (LAN) and alienX (WAN).
+# Distributed builds: offload Linux builds to alienX (WAN) and razorback (LAN).
+#
+# alienX is Ubuntu with Determinate Nix — 32 cores, so it takes the bulk of the
+# work. Preferred by speedFactor.
 #
 # razorback is the NixOS desktop on the home LAN — 16 cores, `aarch64-linux`
-# binfmt enabled, and a direct Tailscale path, so build outputs come back at LAN
-# speed instead of over a DERP relay. Preferred by speedFactor.
-#
-# alienX is Ubuntu with Determinate Nix — more cores (32), but reached over a
-# relay, so copying multi-GB outputs back is slow. Kept as a fallback and for
-# big-parallel work whose outputs stay small.
+# binfmt enabled, and a direct Tailscale path. Kept as a fallback and for jobs
+# with multi-GB outputs, where the LAN copy back beats alienX's extra cores.
 #
 # Both users are already trusted by their Nix daemons and this key is authorized.
 #
@@ -31,7 +30,7 @@
       protocol = "ssh-ng";
       systems = [ "x86_64-linux" "aarch64-linux" ];
       maxJobs = 16;
-      speedFactor = 3; # prefer over alienX: LAN transfer beats extra cores
+      speedFactor = 2; # fallback: pick with --builders when outputs are big
       supportedFeatures = [ "nixos-test" "benchmark" "big-parallel" "uid-range" "kvm" ];
       publicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUQ2R2JlWjlTNVlkTzM5a2VPWURsbUJPYUx0ZHEwMlRYU0VVeUVGOG5BUlQgcm9vdEByYXpvcmJhY2sK";
     }
@@ -43,7 +42,7 @@
       protocol = "ssh-ng";
       systems = [ "x86_64-linux" "aarch64-linux" ];
       maxJobs = 32;
-      speedFactor = 2;
+      speedFactor = 3; # preferred: 32 cores
       supportedFeatures = [ "nixos-test" "benchmark" "big-parallel" "uid-range" "kvm" ];
       publicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUROcXlwazVwczFBM1h4cVAvWFpuQmJ2Z1hldmpzQzVCaEFLL05Mb0V6OEMgcm9vdEBtYW10aGEtMk4zNzJMMUtIUTJGCg==";
     }
