@@ -107,15 +107,15 @@
       "locked": {
         "lastModified": 1787415061,
         "narHash": "sha256-tbV2MHSH5REMDUMjyfsnfBEfrKuytWlIRZlP8tdutcI=",
-        "ref": "refs/heads/main",
+        "owner": "jagadam97",
+        "repo": "homelab-scrapper",
         "rev": "9f805967e6daf9bd7d83f8f890dbab4941232f5d",
-        "revCount": 3,
-        "type": "git",
-        "url": "ssh://git@github.com/jagadam97/homelab-scrapper.git"
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "ssh://git@github.com/jagadam97/homelab-scrapper.git"
+        "owner": "jagadam97",
+        "repo": "homelab-scrapper",
+        "type": "github"
       }
     },
     "nix-index-database": {

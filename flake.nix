@@ -28,11 +28,11 @@
 
     nixpkgs-jellyfin.url = "github:NixOS/nixpkgs/4c1018dae018162ec878d42fec712642d214fdfa";
 
-    # The scraper is packaged in its own repo; this pulls that build. Private
-    # repo, so whoever evaluates needs GitHub access - razorback does, pella
-    # does not, which is why deploys are driven from razorback.
+    # The scraper is packaged in its own repo; this pulls that build. Fetched
+    # over https, not git+ssh: CI runners have no SSH key, and the ssh URL also
+    # defaulted to a nonexistent 'master' ref when HEAD could not be read.
     homelab-scrapper = {
-      url = "git+ssh://git@github.com/jagadam97/homelab-scrapper.git";
+      url = "github:jagadam97/homelab-scrapper";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
