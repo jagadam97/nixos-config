@@ -23,18 +23,6 @@
 
   nix.buildMachines = [
     {
-      # NixOS: nix-daemon lives in the system profile.
-      hostName = "razorback.owl-coho.ts.net?remote-program=/run/current-system/sw/bin/nix-daemon";
-      sshUser = "jagadam97";
-      sshKey = "/Users/dinesh.reddy/.ssh/id_ed25519";
-      protocol = "ssh-ng";
-      systems = [ "x86_64-linux" "aarch64-linux" ];
-      maxJobs = 16;
-      speedFactor = 2; # fallback: pick with --builders when outputs are big
-      supportedFeatures = [ "nixos-test" "benchmark" "big-parallel" "uid-range" "kvm" ];
-      publicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUQ2R2JlWjlTNVlkTzM5a2VPWURsbUJPYUx0ZHEwMlRYU0VVeUVGOG5BUlQgcm9vdEByYXpvcmJhY2sK";
-    }
-    {
       # Determinate Nix is not on PATH for non-interactive SSH sessions.
       hostName = "alienx.owl-coho.ts.net?remote-program=/nix/var/nix/profiles/default/bin/nix-daemon";
       sshUser = "dj";
@@ -46,6 +34,30 @@
       supportedFeatures = [ "nixos-test" "benchmark" "big-parallel" "uid-range" "kvm" ];
       publicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUROcXlwazVwczFBM1h4cVAvWFpuQmJ2Z1hldmpzQzVCaEFLL05Mb0V6OEMgcm9vdEBtYW10aGEtMk4zNzJMMUtIUTJGCg==";
     }
+    {
+      # Tier 2 (Fallback): 16 cores, speed factor 1
+      hostName = "nauvoo.owl-coho.ts.net?remote-program=/run/current-system/sw/bin/nix-daemon";
+      sshUser = "dj";
+      sshKey = "/Users/dinesh.reddy/.ssh/id_ed25519";
+      protocol = "ssh-ng";
+      systems = [ "x86_64-linux" "aarch64-linux" ];
+      maxJobs = 16;
+      speedFactor = 2; 
+      supportedFeatures = [ "nixos-test" "benchmark" "big-parallel" "kvm" ];
+      publicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUVaYnU0Wm9zUW1DUlI0dWVIeVR6VWx5Rjk5a1prYzRpNVh6dzI5OXB5N0Ugcm9vdEBuYXV2b28K";
+    }
+    #{
+      # NixOS: nix-daemon lives in the system profile.
+    #  hostName = "razorback.owl-coho.ts.net?remote-program=/run/current-system/sw/bin/nix-daemon";
+    #  sshUser = "jagadam97";
+    #  sshKey = "/Users/dinesh.reddy/.ssh/id_ed25519";
+    #  protocol = "ssh-ng";
+    #  systems = [ "x86_64-linux" "aarch64-linux" ];
+    #  maxJobs = 16;
+    #  speedFactor = 1; # fallback: pick with --builders when outputs are big
+    #  supportedFeatures = [ "nixos-test" "benchmark" "big-parallel" "uid-range" "kvm" ];
+    #  publicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSUQ2R2JlWjlTNVlkTzM5a2VPWURsbUJPYUx0ZHEwMlRYU0VVeUVGOG5BUlQgcm9vdEByYXpvcmJhY2sK";
+    #}
   ];
 
   # Override per command with: nix build --builders "$NAUVOO_NIX_BUILDERS" ...
