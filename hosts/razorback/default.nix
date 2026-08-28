@@ -17,6 +17,10 @@
     handbrake
     jellyfin-desktop
     mpv
+    android-studio
+    # adb/fastboot. programs.adb was removed upstream — systemd 258 grants
+    # uaccess on Android devices automatically, so the package is all we need.
+    android-tools
   ];
 
   # Latest kernel for Arrow Lake + HDR Wayland
