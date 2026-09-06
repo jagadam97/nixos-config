@@ -21,6 +21,7 @@
     ];
 
     casks = [
+      "android-studio"
       "bitwarden"
       "brave-browser"
       "font-fira-code"
