@@ -82,6 +82,7 @@
             ./modules/services/wireguard.nix
             ./modules/services/cachix.nix
             ./modules/services/nomad.nix
+            ./modules/services/consul.nix
             ./modules/services/honeygain.nix
             ./modules/services/flaresolver.nix
             ./modules/services/disable-suspend.nix
