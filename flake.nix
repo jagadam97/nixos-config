@@ -153,6 +153,7 @@
             ./modules/services/cachix.nix
             ./modules/services/flaresolver.nix
             ./modules/services/byparr.nix
+            ./modules/services/immich-ml.nix
             nix-index-database.nixosModules.default
             { programs.nix-index-database.comma.enable = true; }
 
