@@ -125,7 +125,6 @@ in
     mariadb.client
     postgresql
     redis
-    clickhouse
 
     # Cloud
     awscli2
