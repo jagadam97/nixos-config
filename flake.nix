@@ -200,7 +200,7 @@
             nix-index-database.darwinModules.nix-index
             sops-nix.darwinModules.sops
             ./hosts/macbook
-            ./overlays/jellyfin-desktop.nix
+            # ./overlays/jellyfin-desktop.nix
             home-manager.darwinModules.home-manager
             { programs.nix-index-database.comma.enable = true; }
             {
