@@ -3,8 +3,12 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    darwin.url = "github:lnl7/nix-darwin";
-    darwin.inputs.nixpkgs.follows = "nixpkgs";
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+
+    darwin = {
+      url = "github:lnl7/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -21,25 +25,16 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
-    nix-index-database.url = "github:nix-community/nix-index-database";
-    nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
-
-    nixpkgs-jellyfin.url = "github:NixOS/nixpkgs/4c1018dae018162ec878d42fec712642d214fdfa";
-
-    # The scraper is packaged in its own repo; this pulls that build. Fetched
-    # over https, not git+ssh: CI runners have no SSH key, and the ssh URL also
-    # defaulted to a nonexistent 'master' ref when HEAD could not be read.
     homelab-scrapper = {
       url = "github:jagadam97/homelab-scrapper";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Push-based deploys for pella. Chosen over colmena for magic rollback: the
-    # target reverts to the previous generation on its own if the deployer
-    # cannot reconnect, which is the safety net a console-less box that is
-    # about to become the household router actually needs.
     deploy-rs = {
       url = "github:serokell/deploy-rs";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -56,7 +51,6 @@
       disko,
       nixos-hardware,
       nix-index-database,
-      nixpkgs-jellyfin,
       deploy-rs,
       ...
     }@inputs:
@@ -111,7 +105,6 @@
             sops-nix.nixosModules.sops
             disko.nixosModules.disko
             ./hosts/razorback
-            ./overlays/jellyfin-desktop.nix
             ./modules/common
             ./modules/desktop
             ./modules/desktop/kde.nix
@@ -200,7 +193,6 @@
             nix-index-database.darwinModules.nix-index
             sops-nix.darwinModules.sops
             ./hosts/macbook
-            # ./overlays/jellyfin-desktop.nix
             home-manager.darwinModules.home-manager
             { programs.nix-index-database.comma.enable = true; }
             {
