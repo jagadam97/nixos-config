@@ -137,6 +137,56 @@
           CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1 \
           claude "$@"
       }
+
+      # AWS SSO account switcher: fzf-pick any account/role the SSO login can
+      # see, auto-write its profile to ~/.aws/config, export AWS_PROFILE.
+      #   awsp       → pick
+      #   awsp off   → clear
+      awsp() {
+        if [[ "$1" == off ]]; then
+          unset AWS_PROFILE AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+          echo "AWS profile cleared"
+          return
+        fi
+
+        local session cache token region accounts acct acct_name acct_id roles role profile i
+        session=$AWS_SSO_SESSION
+        [[ -z $session ]] && session=juspay
+        cache="$HOME/.aws/sso/cache/$(printf '%s' "$session" | shasum | cut -d' ' -f1).json"
+
+        # Reuse cached SSO token; log in only when missing/expired
+        for i in 1 2; do
+          token=$(jq -r '.accessToken // empty' "$cache" 2>/dev/null)
+          region=$(jq -r '.region // empty' "$cache" 2>/dev/null)
+          [[ -n $token ]] && accounts=$(aws sso list-accounts --access-token "$token" \
+            --region "$region" --output json 2>/dev/null) && break
+          accounts=""
+          [[ $i == 1 ]] && { aws sso login --sso-session "$session" || return 1; }
+        done
+        [[ -z $accounts ]] && { echo "awsp: cannot list SSO accounts" >&2; return 1; }
+
+        acct=$(jq -r '.accountList[] | "\(.accountName)\t\(.accountId)"' <<<"$accounts" |
+          sort | fzf --prompt='account> ' --delimiter='\t') || return 1
+        acct_name=$(cut -f1 <<<"$acct")
+        acct_id=$(cut -f2 <<<"$acct")
+
+        roles=$(aws sso list-account-roles --access-token "$token" --region "$region" \
+          --account-id "$acct_id" --output json | jq -r '.roleList[].roleName' | sort)
+        role=$(fzf --prompt='role> ' --select-1 <<<"$roles") || return 1
+
+        profile=$(printf '%s' "$acct_name" | tr '[:upper:] ' '[:lower:]-' | tr -cd '[:alnum:]_-')
+        [[ $(wc -l <<<"$roles") -gt 1 ]] && profile="$profile-$role"
+
+        aws configure set sso_session "$session" --profile "$profile"
+        aws configure set sso_account_id "$acct_id" --profile "$profile"
+        aws configure set sso_role_name "$role" --profile "$profile"
+        [[ -n $(aws configure get region --profile "$profile") ]] ||
+          aws configure set region "$region" --profile "$profile"
+
+        unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+        export AWS_PROFILE=$profile
+        echo "AWS_PROFILE=$profile ($acct_name / $acct_id / $role)"
+      }
     '';
   };
 
@@ -146,7 +196,7 @@
     enableZshIntegration = true;
     settings = {
       format = "$directory$git_branch$git_state$git_status$nix_shell$character";
-      right_format = "$cmd_duration$time";
+      right_format = "$aws$cmd_duration$time";
       character = {
         success_symbol = "[➜](bold green)";
         error_symbol = "[✗](bold red)";
