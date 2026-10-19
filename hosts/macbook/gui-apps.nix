@@ -36,6 +36,7 @@
       "spotify"
       "visual-studio-code"
       "vivaldi"
+      "vlc"
       "zed"
     ];
   };
