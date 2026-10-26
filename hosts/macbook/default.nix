@@ -94,6 +94,9 @@
     shell = pkgs.zsh;
   };
 
+  # Tailscale CLI + tailscaled launchd daemon (no GUI app)
+  services.tailscale.enable = true;
+
   # Launch daemons (for things that need to run as root)
   launchd.daemons = {
     # Add any launch daemons here if needed
