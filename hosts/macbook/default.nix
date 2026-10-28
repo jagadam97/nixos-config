@@ -84,6 +84,11 @@
 
   # Tailscale CLI + tailscaled launchd daemon (no GUI app)
   services.tailscale.enable = true;
+  # The stock module only sets RunAtLoad: if tailscaled exits at boot
+  # (it died with exit code 126 on the 2026-10-28 boot and never
+  # retried), launchd leaves it dead, killing magicDNS and the
+  # *.ts.net remote builders in /etc/nix/machines. Keep it alive.
+  launchd.daemons.tailscaled.serviceConfig.KeepAlive = true;
 
   # Launch daemons (for things that need to run as root)
   launchd.daemons = {
