@@ -11,28 +11,16 @@
   imports = [
     ./gui-apps.nix
     ./admin.nix
-    ./remote-builder.nix
+    ./nix-custom.nix
   ];
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
-  # Enable nix-darwin's Nix management
+  # Nix is installed/managed by Determinate Systems, not nix-darwin.
+  # All Nix settings (trusted-users, remote builders, ...) live in
+  # ./nix-custom.nix, which writes /etc/nix/nix.custom.conf and /etc/nix/machines.
   nix.enable = false;
-  nix.package = pkgs.nix;
-
-  # Enable nix-command and flakes
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
-
-  # Trust the current user for daemon operations
-  nix.settings.trusted-users = [
-    "root"
-    "@admin"
-    "dinesh.reddy"
-  ];
 
   # Hostname
   networking.hostName = "macbook";
