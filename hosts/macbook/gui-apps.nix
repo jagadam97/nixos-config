@@ -24,6 +24,7 @@
       "android-studio"
       "bitwarden"
       "brave-browser"
+      "claude-code"
       "font-fira-code"
       "font-powerline-symbols"
       "iterm2"

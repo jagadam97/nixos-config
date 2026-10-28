@@ -141,6 +141,5 @@ in
     protobuf
 
     # AI tools
-    claude-code
   ] else []);
 }
