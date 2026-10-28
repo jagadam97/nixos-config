@@ -18,7 +18,7 @@
   nixpkgs.config.allowUnfree = true;
 
   # Enable nix-darwin's Nix management
-  nix.enable = true;
+  nix.enable = false;
   nix.package = pkgs.nix;
 
   # Enable nix-command and flakes
