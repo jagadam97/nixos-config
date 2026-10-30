@@ -36,6 +36,18 @@ in
       default = 53053;
       description = "Loopback port that dnscrypt-proxy listens on for systemd-resolved to query.";
     };
+
+    lanListenAddresses = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [ "192.168.4.200:53" ];
+      description = ''
+        Extra `IP:port` addresses dnscrypt-proxy listens on so LAN clients can
+        use this host as their resolver. Port 53 doesn't clash with resolved's
+        stub, which only binds 127.0.0.53/54. Open the port in the firewall if
+        it is enabled.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -55,7 +67,7 @@ in
     services.dnscrypt-proxy = {
       enable = true;
       settings = {
-        listen_addresses = [ "127.0.0.1:${toString cfg.listenPort}" ];
+        listen_addresses = [ "127.0.0.1:${toString cfg.listenPort}" ] ++ cfg.lanListenAddresses;
         server_names = [ "home-doh" "home-dot" ];
         require_dnssec = false;
         lb_strategy = "p2";
@@ -88,5 +100,11 @@ in
 
     # Belt-and-braces: clear any stray nameservers so resolved only uses our DNS=.
     networking.nameservers = lib.mkForce [ ];
+
+    # dnscrypt-proxy can start before the LAN address is assigned at boot;
+    # without this the bind fails and the LAN has no DNS until a restart.
+    boot.kernel.sysctl = lib.mkIf (cfg.lanListenAddresses != [ ]) {
+      "net.ipv4.ip_nonlocal_bind" = 1;
+    };
   };
 }

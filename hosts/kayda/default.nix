@@ -52,6 +52,8 @@
     dohStamp = "sdns://AgcAAAAAAAAADzE2MS4xMTguMTYyLjE1OAASa2F5ZGEuamFnYWRhbTk3LnVrEC9kbnMtcXVlcnkva2F5ZGE";
     dotStamp = "sdns://AwcAAAAAAAAADzE2MS4xMTguMTYyLjE1OAASa2F5ZGEuamFnYWRhbTk3LnVr";
     rawDotFallback = "161.118.162.158#kayda.jagadam97.uk";
+    # Home DNS for the LAN: the ASUS router's DHCP hands out 192.168.4.200.
+    lanListenAddresses = [ "192.168.4.200:53" ];
   };
 
   # Firewall
