@@ -27,6 +27,7 @@
       "claude-code"
       "font-fira-code"
       "font-powerline-symbols"
+      "herdr-app"
       "iterm2"
       "notion-calendar"
       "notion"
