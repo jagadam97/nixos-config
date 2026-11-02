@@ -74,11 +74,6 @@
     # Database Clients
     mariadb.client
     postgresql
-    # nixpkgs' darwin postPatch --replace-fail's an SDK path that redis 8.10
-    # dropped from some Makefiles; downgrade to --replace-quiet until fixed.
-    (redis.overrideAttrs (old: {
-      postPatch = builtins.replaceStrings [ "--replace-fail '/Library" ] [ "--replace-quiet '/Library" ] old.postPatch;
-    }))
 
     # AWS / Cloud
     awscli2
