@@ -2,8 +2,10 @@
 { config, lib, ... }:
 
 {
-  # Reusable setup key from app.netbird.io, one copy per host secrets.yaml
-  sops.secrets.netbird_setup_key = {};
+  # One-time setup key from app.netbird.io, per host in its secrets.yaml.
+  # Only needed for first enrollment; peers log in with their own key after
+  # netbird-login only runs at boot/unit change; re-run it when the key rotates
+  sops.secrets.netbird_setup_key.restartUnits = [ "netbird-login.service" ];
 
   services.netbird.enable = true;
 
