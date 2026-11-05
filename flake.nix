@@ -75,6 +75,7 @@
             ./modules/services/telegraf.nix
             ./modules/services/wireguard.nix
             ./modules/services/cachix.nix
+            ./modules/services/netbird.nix
             ./modules/services/nomad.nix
             ./modules/services/consul.nix
             ./modules/services/honeygain.nix
@@ -109,6 +110,7 @@
             ./modules/desktop
             ./modules/desktop/kde.nix
             ./modules/services/cachix.nix
+            ./modules/services/netbird.nix
             ./modules/services/nix-ld.nix
             ./modules/services/nfs-mounts.nix
             nix-index-database.nixosModules.default
@@ -144,6 +146,7 @@
             ./modules/services/telegraf.nix
             ./modules/services/vector.nix
             ./modules/services/cachix.nix
+            ./modules/services/netbird.nix
             ./modules/services/flaresolver.nix
             ./modules/services/byparr.nix
             ./modules/services/immich-ml.nix
@@ -180,6 +183,7 @@
             ./modules/services/homelab-scrapper.nix
             ./modules/services/filebrowser-quantum.nix
             ./modules/services/telegraf.nix
+            ./modules/services/netbird.nix
           ];
         };
       };
